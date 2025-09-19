@@ -1,0 +1,11 @@
+# Core dependencies for NaturalDB Layer 1
+# No external dependencies required for basic storage system
+# Using only Python standard library modules:
+# - os, pathlib for file system operations
+# - json for JSON serialization
+# - fcntl for file locking
+# - tempfile, shutil for testing
+
+# Optional development dependencies (commented out for minimal install)
+# pytest>=7.0.0
+# pytest-cov>=4.0.0
