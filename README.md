@@ -25,6 +25,7 @@ We also provide a **Next.js e-commerce app** that allows users to browse product
 
 ### Layer 1: Storage System  
 - File-based key-value store.  
+- Each user has a dedicated directory (e.g., `data/user123/`).
 - Folders map to tables (e.g., `Products/` = Products collection).  
 - Files map to records (e.g., `Products/1.json` = product with ID 1).  
 - File-locking for minimal transaction safety.  
