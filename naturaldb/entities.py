@@ -19,6 +19,7 @@ class Index:
 class Table:
     name: str
     indexes: Dict[str, Index]  # index name to Index object mapping
+    keys: Optional[List[str]] = None  # Add keys field for backward compatibility
 
 @dataclass
 class Record:

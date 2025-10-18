@@ -1,5 +1,5 @@
-from entities import User, Database, Table, Record
-from lock import lock_manager
+from ..entities import User, Database, Table, Record
+from ..lock import lock_manager
 import os
 import shutil
 import json
@@ -17,7 +17,10 @@ class Storage:
         """
         Get the file path for a given user, database, and optionally table and record.
         """
-        path = f"/data/{user.id}"
+        # Use a local data directory instead of /data
+        import os
+        base_dir = os.path.join(os.getcwd(), "data")
+        path = f"{base_dir}/{user.id}"
         if database:
             path += f"/{database.name}"
         if table:
