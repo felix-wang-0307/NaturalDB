@@ -3,6 +3,7 @@ from lock import lock_manager
 import os
 import shutil
 import json
+from typing import Optional
 
 class Storage:
     """
@@ -11,9 +12,8 @@ class Storage:
     """
     def __init__(self) -> None:
         pass
-
     @staticmethod
-    def get_path(user: User, database: Database = None, table: Table = None, record: Record = None) -> str:
+    def get_path(user: User, database: Optional[Database] = None, table: Optional[Table] = None, record: Optional[Record] = None) -> str:
         """
         Get the file path for a given user, database, and optionally table and record.
         """
