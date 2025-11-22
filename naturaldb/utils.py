@@ -1,4 +1,4 @@
-from lock import lock_manager
+from .lock import lock_manager
 import os
 
 def sanitize_name(name: str) -> str:

@@ -1,8 +1,8 @@
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any
-from utils import sanitize_name
-from logger import Logger
-from errors import NaturalDBError
+from .utils import sanitize_name
+from .logger import Logger
+from .errors import NaturalDBError
 
 _entity_logger = Logger(log_file="naturaldb_entities.log", to_console=False)
 MAX_NAME_LENGTH = 80

@@ -4,7 +4,7 @@ This implementation doesn't use the external json library as required by the REA
 """
 
 from typing import Any, Dict, List, Union, Optional
-from errors import NaturalDBError
+from ..errors import NaturalDBError
 
 
 class JSONParserError(NaturalDBError):

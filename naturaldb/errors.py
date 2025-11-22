@@ -1,4 +1,4 @@
-from logger import Logger
+from .logger import Logger
 class NaturalDBError(Exception):
     """Base class for all exceptions raised by NaturalDB."""
     def __init__(self, message: str, type: str = "NaturalDBError"):
