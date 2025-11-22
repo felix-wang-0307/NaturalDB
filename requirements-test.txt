@@ -1,0 +1,4 @@
+# Testing requirements for NaturalDB
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-xdist>=3.3.0  # for parallel test execution
