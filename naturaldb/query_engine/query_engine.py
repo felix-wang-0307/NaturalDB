@@ -81,6 +81,10 @@ class QueryEngine:
                     return False
                 operations = self.get_table_operations(table_name)
             
+            # Ensure operations is not None before accessing its attributes
+            if not operations:
+                return False
+
             operations.table_storage.save_record(record)
             return True
         except Exception as e:

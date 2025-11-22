@@ -5,11 +5,13 @@ This implementation doesn't use the external json library as required by the REA
 
 import re
 from typing import Any, Dict, List, Union, Optional
+from errors import NaturalDBError
 
 
-class JSONParserError(Exception):
+class JSONParserError(NaturalDBError):
     """Custom exception for JSON parsing errors"""
-    pass
+    def __init__(self, message: str):
+        super().__init__(message, type="JSONParserError")
 
 
 class JSONParser:
