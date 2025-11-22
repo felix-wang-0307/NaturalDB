@@ -2,8 +2,8 @@ from ..entities import User, Database, Table, Record
 from ..utils import sanitize_name
 from .file_system import FileSystem
 import os
-import json
 from typing import Optional
+from ..query_engine.json_parser import JSONParser
 
 class Storage:
     """
@@ -53,7 +53,7 @@ class Storage:
         path = Storage.get_path(user, database)
         FileSystem.create_folder(path)
         metadata_path = f"{path}/metadata.json"
-        metadata_content = json.dumps({'name': database.name, 'tables': []}, indent=2)
+        metadata_content = JSONParser.to_json_string({'name': database.name, 'tables': []}, indent=2)
         FileSystem.create_file(metadata_path, metadata_content, recursive=False)
     
     def delete_database(self, user: User, database: Database) -> None:
@@ -86,7 +86,7 @@ class DatabaseStorage:
         content = FileSystem.read_file(metadata_path)
         if content is None:
             return {'name': self.database.name, 'tables': []}
-        return json.loads(content)
+        return JSONParser.parse_string(content)
     
     @metadata.setter
     def metadata(self, value: dict) -> None:
@@ -95,7 +95,7 @@ class DatabaseStorage:
         Uses FileSystem for thread-safe operations.
         """
         metadata_path = f"{self.base_path}/metadata.json"
-        content = json.dumps(value, indent=2)
+        content = JSONParser.to_json_string(value, indent=2)
         FileSystem.create_file(metadata_path, content, recursive=False)
         
     def get_table_path(self, table: Table) -> str:
@@ -116,7 +116,7 @@ class DatabaseStorage:
         Uses FileSystem for thread-safe operations.
         """
         metadata_path = self.get_table_metadata_path(table)
-        metadata_content = json.dumps({'name': table.name, 'keys': table.keys}, indent=2)
+        metadata_content = JSONParser.to_json_string({'name': table.name, 'keys': table.keys}, indent=2)
         FileSystem.create_file(metadata_path, metadata_content, recursive=False)
     
     def create_table(self, table: Table) -> None:
@@ -166,7 +166,7 @@ class TableStorage:
         content = FileSystem.read_file(metadata_path)
         if content is None:
             return {'name': self.table.name, 'indexes': {}}
-        return json.loads(content)
+        return JSONParser.parse_string(content)
         
     @metadata.setter
     def metadata(self, value: dict) -> None:
@@ -175,7 +175,7 @@ class TableStorage:
         Uses FileSystem for thread-safe operations.
         """
         metadata_path = f"{self.base_path}/metadata.json"
-        content = json.dumps(value, indent=2)
+        content = JSONParser.to_json_string(value, indent=2)
         FileSystem.create_file(metadata_path, content, recursive=False)
 
     
@@ -191,7 +191,7 @@ class TableStorage:
         Uses FileSystem for thread-safe operations.
         """
         record_path = self.get_record_path(record)
-        content = json.dumps(record.data, indent=2)
+        content = JSONParser.to_json_string(record.data, indent=2)
         FileSystem.create_file(record_path, content, recursive=False)
     
     def load_record(self, record_id: str) -> Record:
@@ -203,7 +203,7 @@ class TableStorage:
         content = FileSystem.read_file(record_path)
         if content is None:
             raise FileNotFoundError(f"Record {record_id} not found")
-        data = json.loads(content)
+        data = JSONParser.parse_string(content)
         return Record(id=record_id, data=data)
     
     def load_all_records(self) -> dict:
