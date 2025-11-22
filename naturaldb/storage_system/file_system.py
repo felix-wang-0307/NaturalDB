@@ -18,7 +18,7 @@ class FileSystem:
         pass
 
     @staticmethod
-    def create_file(path: str, content: str, recursive: bool = True) -> None:
+    def create_file(path: str, content: Optional[str], recursive: bool = True) -> None:
         """
         Create a file at the given path with the specified content.
         If recursive is True, create parent directories as needed.
@@ -30,8 +30,9 @@ class FileSystem:
                 os.makedirs(os.path.dirname(path), exist_ok=True)
             elif not os.path.exists(os.path.dirname(path)):
                 raise FileSystemError(f"Parent directory does not exist for path: {path}")
-            with open(path, 'w') as f:
-                f.write(content)
+            if content is not None:
+                with open(path, 'w') as f:
+                    f.write(content)
         finally:
             lock_manager.release_write(path)
 
