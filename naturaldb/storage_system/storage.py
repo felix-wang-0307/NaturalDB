@@ -1,7 +1,7 @@
 from ..entities import User, Database, Table, Record
-from ..lock import lock_manager
+from ..utils import sanitize_name
+from .file_system import FileSystem
 import os
-import shutil
 import json
 from typing import Optional
 
@@ -16,51 +16,53 @@ class Storage:
     def get_path(user: User, database: Optional[Database] = None, table: Optional[Table] = None, record: Optional[Record] = None) -> str:
         """
         Get the file path for a given user, database, and optionally table and record.
+        Uses sanitize_name to ensure filesystem-safe names.
         """
         # Use a local data directory instead of /data
-        import os
         base_dir = os.path.join(os.getcwd(), "data")
-        path = f"{base_dir}/{user.id}"
+        path = f"{base_dir}/{sanitize_name(user.id)}"
         if database:
-            path += f"/{database.name}"
+            path += f"/{sanitize_name(database.name)}"
         if table:
-            path += f"/{table.name}"
+            path += f"/{sanitize_name(table.name)}"
         if record:
-            path += f"/{record.id}.json"
+            path += f"/{sanitize_name(record.id)}.json"
         return path
 
     def create_user(self, user: User) -> None:
         """
         Create a directory for the user.
+        Uses FileSystem for thread-safe operations.
         """
         path = Storage.get_path(user)
-        os.makedirs(path, exist_ok=True)
+        FileSystem.create_folder(path)
     
     def delete_user(self, user: User) -> None:
         """
         Delete the user's directory and all its contents.
+        Uses FileSystem for thread-safe operations.
         """
         path = Storage.get_path(user)
-        if os.path.exists(path):
-            shutil.rmtree(path)
+        FileSystem.delete_folder(path)
 
     def create_database(self, user: User, database: Database) -> None:
         """
         Create a directory for the database.
+        Uses FileSystem for thread-safe operations.
         """
         path = Storage.get_path(user, database)
-        os.makedirs(path, exist_ok=True)
+        FileSystem.create_folder(path)
         metadata_path = f"{path}/metadata.json"
-        with open(metadata_path, 'w') as f:
-            json.dump({'name': database.name, 'tables': []}, f)
+        metadata_content = json.dumps({'name': database.name, 'tables': []}, indent=2)
+        FileSystem.create_file(metadata_path, metadata_content, recursive=False)
     
     def delete_database(self, user: User, database: Database) -> None:
         """
         Delete the database's directory and all its contents.
+        Uses FileSystem for thread-safe operations.
         """
         path = Storage.get_path(user, database)
-        if os.path.exists(path):
-            shutil.rmtree(path)
+        FileSystem.delete_folder(path)
 
 class DatabaseStorage:
     """
@@ -72,27 +74,29 @@ class DatabaseStorage:
         self.user = user
         self.database = database
         self.base_path = Storage.get_path(user, database)
-        os.makedirs(self.base_path, exist_ok=True)
+        FileSystem.create_folder(self.base_path)
     
     @property
     def metadata(self) -> dict:
         """
         Load the database's metadata from a JSON file.
+        Uses FileSystem for thread-safe operations.
         """
         metadata_path = f"{self.base_path}/metadata.json"
-        if not os.path.exists(metadata_path):
+        content = FileSystem.read_file(metadata_path)
+        if content is None:
             return {'name': self.database.name, 'tables': []}
-        with open(metadata_path, 'r') as f:
-            return json.load(f)
+        return json.loads(content)
     
     @metadata.setter
     def metadata(self, value: dict) -> None:
         """
         Save the database's metadata to a JSON file.
+        Uses FileSystem for thread-safe operations.
         """
         metadata_path = f"{self.base_path}/metadata.json"
-        with open(metadata_path, 'w') as f:
-            json.dump(value, f)
+        content = json.dumps(value, indent=2)
+        FileSystem.create_file(metadata_path, content, recursive=False)
         
     def get_table_path(self, table: Table) -> str:
         """
@@ -109,18 +113,34 @@ class DatabaseStorage:
     def save_table_metadata(self, table: Table) -> None:
         """
         Save the table's metadata to a JSON file.
+        Uses FileSystem for thread-safe operations.
         """
         metadata_path = self.get_table_metadata_path(table)
-        with open(metadata_path, 'w') as f:
-            json.dump({'name': table.name, 'keys': table.keys}, f)
+        metadata_content = json.dumps({'name': table.name, 'keys': table.keys}, indent=2)
+        FileSystem.create_file(metadata_path, metadata_content, recursive=False)
     
     def create_table(self, table: Table) -> None:
         """
         Create a directory for the table and save its metadata.
+        Uses FileSystem for thread-safe operations.
         """
         path = self.get_table_path(table)
-        os.makedirs(path, exist_ok=True)
+        FileSystem.create_folder(path)
         self.save_table_metadata(table)
+    
+    def delete_table(self, table: Table) -> None:
+        """
+        Delete the table's directory and all its contents.
+        Uses FileSystem for thread-safe operations.
+        """
+        path = self.get_table_path(table)
+        FileSystem.delete_folder(path)
+
+    def __len__(self) -> int:
+        """
+        Get the number of tables in the database.
+        """
+        return len(self.metadata.get('tables', []))
 
 
 class TableStorage:
@@ -134,27 +154,29 @@ class TableStorage:
         self.database = database
         self.table = table
         self.base_path = Storage.get_path(user, database, table)
-        os.makedirs(self.base_path, exist_ok=True)
+        FileSystem.create_folder(self.base_path)
 
     @property
     def metadata(self) -> dict:
         """
         Load the table's metadata from a JSON file.
+        Uses FileSystem for thread-safe operations.
         """
         metadata_path = f"{self.base_path}/metadata.json"
-        if not os.path.exists(metadata_path):
+        content = FileSystem.read_file(metadata_path)
+        if content is None:
             return {'name': self.table.name, 'indexes': {}}
-        with open(metadata_path, 'r') as f:
-            return json.load(f)
+        return json.loads(content)
         
     @metadata.setter
     def metadata(self, value: dict) -> None:
         """
         Save the table's metadata to a JSON file.
+        Uses FileSystem for thread-safe operations.
         """
         metadata_path = f"{self.base_path}/metadata.json"
-        with open(metadata_path, 'w') as f:
-            json.dump(value, f)
+        content = json.dumps(value, indent=2)
+        FileSystem.create_file(metadata_path, content, recursive=False)
 
     
     def get_record_path(self, record: Record) -> str:
@@ -166,26 +188,32 @@ class TableStorage:
     def save_record(self, record: Record) -> None:
         """
         Save a record to a JSON file.
+        Uses FileSystem for thread-safe operations.
         """
         record_path = self.get_record_path(record)
-        with open(record_path, 'w') as f:
-            json.dump(record.data, f)
+        content = json.dumps(record.data, indent=2)
+        FileSystem.create_file(record_path, content, recursive=False)
     
     def load_record(self, record_id: str) -> Record:
         """
         Load a record from a JSON file.
+        Uses FileSystem for thread-safe operations.
         """
-        record_path = f"{self.base_path}/{record_id}.json"
-        with open(record_path, 'r') as f:
-            data = json.load(f)
+        record_path = f"{self.base_path}/{sanitize_name(record_id)}.json"
+        content = FileSystem.read_file(record_path)
+        if content is None:
+            raise FileNotFoundError(f"Record {record_id} not found")
+        data = json.loads(content)
         return Record(id=record_id, data=data)
     
     def load_all_records(self) -> dict:
         """
         Load all records in the table.
+        Uses FileSystem for thread-safe operations.
         """
         records = {}
-        for filename in os.listdir(self.base_path):
+        files = FileSystem.list_files(self.base_path, show_folder=False)
+        for filename in files:
             if filename.endswith('.json') and filename != 'metadata.json':
                 record_id = filename[:-5]  # Remove .json extension
                 records[record_id] = self.load_record(record_id)
@@ -194,17 +222,48 @@ class TableStorage:
     def delete_record(self, record_id: str) -> None:
         """
         Delete a record's JSON file.
+        Uses FileSystem for thread-safe operations.
         """
-        record_path = f"{self.base_path}/{record_id}.json"
-        if os.path.exists(record_path):
-            os.remove(record_path)
+        record_path = f"{self.base_path}/{sanitize_name(record_id)}.json"
+        FileSystem.delete_file(record_path)
 
     def list_records(self) -> list:
         """
         List all record IDs in the table.
+        Uses FileSystem for thread-safe operations.
         """
         records = []
-        for filename in os.listdir(self.base_path):
+        files = FileSystem.list_files(self.base_path, show_folder=False)
+        for filename in files:
             if filename.endswith('.json') and filename != 'metadata.json':
                 records.append(filename[:-5])  # Remove .json extension
         return records
+    
+    def __len__(self) -> int:
+        """
+        Get the number of records in the table.
+        """
+        return len(self.list_records())
+    
+
+if __name__ == "__main__":
+    # Example usage
+    user = User(id="user1", name="Alice")
+    database = Database(name="test_db")
+    table = Table(name="test_table", indexes={})
+    record = Record(id="record1", data={"field1": "value1", "field2": "value2"})
+
+    storage = Storage()
+    storage.create_user(user)
+    storage.create_database(user, database)
+
+    db_storage = DatabaseStorage(user, database)
+    db_storage.create_table(table)
+
+    table_storage = TableStorage(user, database, table)
+    table_storage.save_record(record)
+
+    loaded_record = table_storage.load_record("record1")
+    print(loaded_record)
+
+    print(f"Number of records in table: {len(table_storage)}")

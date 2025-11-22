@@ -1,29 +1,24 @@
 from lock import lock_manager
 import os
 
+def sanitize_name(name: str) -> str:
+    """
+    Sanitize a name to be filesystem-friendly.
+    """
+    return "".join(c for c in name if c.isalnum() or c in (' ', '_', '-')).rstrip()
 
-def read_file(path: str) -> str:
+def xss_sanitize(input_str: str) -> str:
     """
-    Read the content of a file.
+    Sanitize input to prevent XSS attacks.
     """
-    if not os.path.exists(path):
-        raise FileNotFoundError(f"File {path} does not exist.")
-    lock_manager.acquire_read(path)
-    try:
-        with open(path, 'r') as f:
-            return f.read()
-    finally:
-        lock_manager.release_read(path)
-
-def write_file(path: str, content: str) -> None:
-    """
-    Write content to a file.
-    """
-    dir_path = os.path.dirname(path)
-    os.makedirs(dir_path, exist_ok=True)
-    lock_manager.acquire_write(path)
-    try:
-        with open(path, 'w') as f:
-            f.write(content)
-    finally:
-        lock_manager.release_write(path)
+    replacements = {
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#x27;",
+        "/": "&#x2F;",
+    }
+    for old, new in replacements.items():
+        input_str = input_str.replace(old, new)
+    return input_str
