@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Union
 import os
 from ..entities import User, Database, Table, Record
 from ..storage_system.storage import Storage, DatabaseStorage, TableStorage
-from .json_parser import JSONParser
+from ..json_parser import JSONParser
 from .operations import QueryOperations, JoinOperations
 
 
@@ -249,7 +249,8 @@ class QueryEngine:
         groups = operations.group_by(records, field_name)
         
         if not aggregations:
-            return {k: len(v) for k, v in groups.items()}
+            # Return the grouped records themselves, not just counts
+            return groups
         
         result = {}
         for group_key, group_records in groups.items():
@@ -288,14 +289,18 @@ class QueryEngine:
         
         return sorted_records
     
+    def order_by(self, table_name: str, field_name: str, ascending: bool = True) -> List[Record]:
+        """Alias for sort method for more intuitive API."""
+        return self.sort(table_name, field_name, ascending)
+    
     def join(self, 
              left_table: str, 
              right_table: str, 
              left_field: str, 
              right_field: str, 
              join_type: str = "inner",
-             left_alias: str = "left",
-             right_alias: str = "right") -> List[Dict[str, Any]]:
+             left_prefix: str = "",
+             right_prefix: str = "") -> List[Dict[str, Any]]:
         """
         Join two tables.
         
@@ -305,11 +310,11 @@ class QueryEngine:
             left_field: Field to join on in left table
             right_field: Field to join on in right table
             join_type: Type of join ('inner' or 'left')
-            left_alias: Alias for left table
-            right_alias: Alias for right table
+            left_prefix: Optional prefix for left table fields
+            right_prefix: Optional prefix for right table fields
             
         Returns:
-            List of joined records
+            List of flattened joined records
         """
         left_operations = self.get_table_operations(left_table)
         right_operations = self.get_table_operations(right_table)
@@ -321,9 +326,9 @@ class QueryEngine:
         right_records = right_operations.find_all()
         
         if join_type == "inner":
-            return JoinOperations.inner_join(left_records, right_records, left_field, right_field, left_alias, right_alias)
+            return JoinOperations.inner_join(left_records, right_records, left_field, right_field, left_prefix, right_prefix)
         elif join_type == "left":
-            return JoinOperations.left_join(left_records, right_records, left_field, right_field, left_alias, right_alias)
+            return JoinOperations.left_join(left_records, right_records, left_field, right_field, left_prefix, right_prefix)
         else:
             raise ValueError(f"Unsupported join type: {join_type}")
     

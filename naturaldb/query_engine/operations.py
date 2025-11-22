@@ -263,8 +263,8 @@ class JoinOperations:
         right_records: List[Record],
         left_field: str,
         right_field: str,
-        left_alias: str = "left",
-        right_alias: str = "right"
+        left_prefix: str = "",
+        right_prefix: str = ""
     ) -> List[Dict[str, Any]]:
         """
         Perform an inner join between two sets of records.
@@ -274,11 +274,11 @@ class JoinOperations:
             right_records: Records from the right table
             left_field: Field name to join on in left records
             right_field: Field name to join on in right records
-            left_alias: Alias for left table fields
-            right_alias: Alias for right table fields
+            left_prefix: Optional prefix for left table fields (e.g., "user_")
+            right_prefix: Optional prefix for right table fields (e.g., "order_")
             
         Returns:
-            List of joined records
+            List of flattened joined records with all fields merged
         """
         result = []
         
@@ -296,10 +296,14 @@ class JoinOperations:
             
             if left_value in right_lookup:
                 for right_record in right_lookup[left_value]:
-                    joined = {
-                        left_alias: left_record.data,
-                        right_alias: right_record.data
-                    }
+                    # Merge both records into a single flat dictionary
+                    joined = {}
+                    # Add left record fields with optional prefix
+                    for key, value in left_record.data.items():
+                        joined[f"{left_prefix}{key}"] = value
+                    # Add right record fields with optional prefix
+                    for key, value in right_record.data.items():
+                        joined[f"{right_prefix}{key}"] = value
                     result.append(joined)
         
         return result
@@ -310,8 +314,8 @@ class JoinOperations:
         right_records: List[Record],
         left_field: str,
         right_field: str,
-        left_alias: str = "left",
-        right_alias: str = "right"
+        left_prefix: str = "",
+        right_prefix: str = ""
     ) -> List[Dict[str, Any]]:
         """
         Perform a left join between two sets of records.
@@ -321,11 +325,11 @@ class JoinOperations:
             right_records: Records from the right table
             left_field: Field name to join on in left records
             right_field: Field name to join on in right records
-            left_alias: Alias for left table fields
-            right_alias: Alias for right table fields
+            left_prefix: Optional prefix for left table fields (e.g., "user_")
+            right_prefix: Optional prefix for right table fields (e.g., "order_")
             
         Returns:
-            List of joined records
+            List of flattened joined records with all fields merged
         """
         result = []
         
@@ -343,17 +347,20 @@ class JoinOperations:
             
             if left_value in right_lookup:
                 for right_record in right_lookup[left_value]:
-                    joined = {
-                        left_alias: left_record.data,
-                        right_alias: right_record.data
-                    }
+                    # Merge both records into a single flat dictionary
+                    joined = {}
+                    # Add left record fields with optional prefix
+                    for key, value in left_record.data.items():
+                        joined[f"{left_prefix}{key}"] = value
+                    # Add right record fields with optional prefix
+                    for key, value in right_record.data.items():
+                        joined[f"{right_prefix}{key}"] = value
                     result.append(joined)
             else:
-                # Left join includes records with no match
-                joined = {
-                    left_alias: left_record.data,
-                    right_alias: None
-                }
+                # Left join includes records with no match (only left fields)
+                joined = {}
+                for key, value in left_record.data.items():
+                    joined[f"{left_prefix}{key}"] = value
                 result.append(joined)
         
         return result
