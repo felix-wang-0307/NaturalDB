@@ -3,7 +3,7 @@ from ..utils import sanitize_name
 from .file_system import FileSystem
 import os
 from typing import Optional
-from ..query_engine.json_parser import JSONParser
+from ..json_parser import JSONParser
 
 class Storage:
     """
