@@ -17,9 +17,10 @@ class Storage:
         """
         Get the file path for a given user, database, and optionally table and record.
         Uses sanitize_name to ensure filesystem-safe names.
+        Respects NATURALDB_DATA_PATH environment variable for testing.
         """
-        # Use a local data directory instead of /data
-        base_dir = os.path.join(os.getcwd(), "data")
+        # Use environment variable if set, otherwise use local data directory
+        base_dir = os.environ.get('NATURALDB_DATA_PATH', os.path.join(os.getcwd(), "data"))
         path = f"{base_dir}/{sanitize_name(user.id)}"
         if database:
             path += f"/{sanitize_name(database.name)}"
