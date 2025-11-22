@@ -4,7 +4,6 @@ Implements filtering, projection, grouping, aggregation, and join operations.
 """
 
 from typing import Any, Dict, List, Optional, Union, Callable
-import os
 from ..entities import User, Database, Table, Record
 from ..storage_system.storage import TableStorage
 
