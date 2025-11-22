@@ -1,19 +1,34 @@
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any
 from utils import sanitize_name
+from logger import Logger
+from errors import NaturalDBError
+
+_entity_logger = Logger(log_file="naturaldb_entities.log", to_console=False)
+MAX_NAME_LENGTH = 80
+
+class EntityError(NaturalDBError):
+    """Custom exception for Entity errors"""
+    def __init__(self, message: str):
+        super().__init__(message, type="EntityError")
 
 def _check_and_sanitize(label: str, value: str) -> str:
     if not isinstance(value, str):
-        raise TypeError(f"{label} must be str, got {type(value).__name__}")
+        raise EntityError(f"{label} must be str, got {type(value).__name__}")
     s = sanitize_name(value)
     if s != value:
         # Either raise or assign sanitized; choose one. Here we assign sanitized.
-        return s
-    return value
+        _entity_logger.log("WARNING", f"{label} sanitized from '{value}' to '{s}'")
+
+    if len(s) > MAX_NAME_LENGTH:
+        s = s[:MAX_NAME_LENGTH]
+        _entity_logger.log("WARNING", f"{label} truncated to {MAX_NAME_LENGTH} characters")
+
+    return s
 
 def _check_list_strings(label: str, items: List[str]) -> List[str]:
     if not isinstance(items, list):
-        raise TypeError(f"{label} must be a list of str")
+        raise EntityError(f"{label} must be a list of str")
     return [_check_and_sanitize(f"{label}[]", x) for x in items]
 
 @dataclass
