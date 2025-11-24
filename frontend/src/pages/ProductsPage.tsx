@@ -40,7 +40,7 @@ const ProductsPage = () => {
   
   // Filter states
   const [searchText, setSearchText] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 100000]);
   const [minRating, setMinRating] = useState(0);
   const [minDiscount, setMinDiscount] = useState(0);
@@ -52,15 +52,23 @@ const ProductsPage = () => {
 
   const categories = [
     { value: 'USBCables', label: 'USB Cables' },
-    { value: 'WallChargers', label: 'Wall Chargers' },
-    { value: 'Smartwatches', label: 'Smartwatches' },
-    { value: 'Keyboards&Mice', label: 'Keyboards & Mice' },
-    { value: 'Speakers', label: 'Speakers' },
-    { value: 'Headphones&Earbuds', label: 'Headphones & Earbuds' },
-    { value: 'WirelessUSBAdapters', label: 'Wireless USB Adapters' },
+    { value: 'Smartphones', label: 'Smartphones' },
+    { value: 'SmartWatches', label: 'Smart Watches' },
+    { value: 'SmartTelevisions', label: 'Smart Televisions' },
+    { value: 'In-Ear', label: 'In-Ear Headphones' },
+    { value: 'RemoteControls', label: 'Remote Controls' },
     { value: 'MixerGrinders', label: 'Mixer Grinders' },
-    { value: 'Televisions', label: 'Televisions' },
-    { value: 'InvertersStabilizers', label: 'Inverters & Stabilizers' },
+    { value: 'Mice', label: 'Mice' },
+    { value: 'DryIrons', label: 'Dry Irons' },
+    { value: 'InstantWaterHeaters', label: 'Instant Water Heaters' },
+    { value: 'HDMICables', label: 'HDMI Cables' },
+    { value: 'ElectricKettles', label: 'Electric Kettles' },
+    { value: 'WallChargers', label: 'Wall Chargers' },
+    { value: 'WirelessUSBAdapters', label: 'Wireless USB Adapters' },
+    { value: 'PowerBanks', label: 'Power Banks' },
+    { value: 'Keyboards', label: 'Keyboards' },
+    { value: 'Headphones', label: 'Headphones' },
+    { value: 'ScreenProtectors', label: 'Screen Protectors' },
   ];
 
   const loadProducts = useCallback(async () => {
@@ -78,11 +86,11 @@ const ProductsPage = () => {
         });
       }
 
-      if (selectedCategory) {
+      if (selectedCategories.length > 0) {
         filters.push({
           field: 'category',
-          operator: 'eq',
-          value: selectedCategory,
+          operator: 'in',
+          value: selectedCategories,
         });
       }
 
@@ -123,9 +131,6 @@ const ProductsPage = () => {
       const [field, direction] = sortBy.split('_');
       const sort = [{ field, direction: direction as 'asc' | 'desc' }];
 
-      console.log('Filters being sent:', JSON.stringify(filters, null, 2));
-      console.log('MinRating value:', minRating);
-
       const response = await getProducts({
         filters,
         sort,
@@ -140,7 +145,7 @@ const ProductsPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [searchText, selectedCategory, priceRange, minRating, minDiscount, sortBy, currentPage]);
+  }, [searchText, selectedCategories, priceRange, minRating, minDiscount, sortBy, currentPage]);
 
   useEffect(() => {
     loadProducts();
@@ -153,7 +158,7 @@ const ProductsPage = () => {
 
   const handleReset = () => {
     setSearchText('');
-    setSelectedCategory('');
+    setSelectedCategories([]);
     setPriceRange([0, 100000]);
     setMinRating(0);
     setMinDiscount(0);
@@ -200,14 +205,16 @@ const ProductsPage = () => {
             <div className="filter-section">
               <div className="filter-title">Category</div>
               <Select
+                mode="multiple"
                 style={{ width: '100%' }}
                 placeholder="All Categories"
-                value={selectedCategory || undefined}
+                value={selectedCategories}
                 onChange={(value) => {
-                  setSelectedCategory(value || '');
+                  setSelectedCategories(value);
                   setCurrentPage(1);
                 }}
                 allowClear
+                maxTagCount="responsive"
               >
                 {categories.map((cat) => (
                   <Option key={cat.value} value={cat.value}>

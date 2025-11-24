@@ -1,0 +1,106 @@
+// ProductDetailPage.less
+.product-detail-page {
+  .page-header {
+    margin-bottom: 24px;
+  }
+
+  .product-card {
+    .product-image-container {
+      position: relative;
+      width: 100%;
+      background: #f5f5f5;
+      border-radius: 8px;
+      padding: 16px;
+      text-align: center;
+
+      .product-image {
+        max-width: 100%;
+        max-height: 500px;
+        object-fit: contain;
+      }
+
+      .discount-ribbon {
+        font-size: 16px;
+        font-weight: bold;
+      }
+    }
+
+    .rating-section {
+      display: flex;
+      align-items: center;
+    }
+
+    .price-section {
+      .ant-statistic {
+        .ant-statistic-title {
+          font-size: 14px;
+          color: rgba(0, 0, 0, 0.45);
+        }
+      }
+    }
+
+    .about-section {
+      h4 {
+        margin-bottom: 12px;
+      }
+
+      .ant-typography {
+        font-size: 14px;
+        line-height: 1.8;
+
+        div {
+          padding-left: 8px;
+        }
+      }
+    }
+  }
+
+  .reviews-card {
+    .review-item {
+      border-bottom: 1px solid #f0f0f0;
+      padding: 16px 0;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      .ant-list-item-meta {
+        margin-bottom: 8px;
+      }
+
+      .ant-typography {
+        line-height: 1.6;
+      }
+    }
+  }
+
+  .loading-container,
+  .error-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 400px;
+    padding: 40px;
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+  .product-detail-page {
+    .product-card {
+      .product-image-container {
+        .product-image {
+          max-height: 300px;
+        }
+      }
+
+      .price-section {
+        .ant-space {
+          flex-direction: column;
+          align-items: flex-start !important;
+        }
+      }
+    }
+  }
+}
