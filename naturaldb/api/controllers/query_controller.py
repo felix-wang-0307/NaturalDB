@@ -124,9 +124,11 @@ def execute_query(user_id, db_name):
         # Convert to dict format
         if results:
             if isinstance(results, list) and len(results) > 0:
-                if hasattr(results[0], 'id'):
-                    # Records
-                    results_list = [{'id': r.id, **r.data} for r in results]
+                first_item = results[0]
+                if hasattr(first_item, 'id') and hasattr(first_item, 'data'):
+                    # Records - convert to dicts
+                    from ...entities import Record
+                    results_list = [{'id': r.id, **r.data} if isinstance(r, Record) else r for r in results]
                 else:
                     # Already dicts (from group_by or project)
                     results_list = results
