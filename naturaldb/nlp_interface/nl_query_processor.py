@@ -1,170 +1,150 @@
 """
-Natural Language Query Processor for NaturalDB Layer 3
-Handles communication with OpenAI API for function calling.
+Natural Language Query Processor - Converts natural language to function calls using OpenAI
 """
 
-from typing import List, Dict, Any, Optional
-import json
+from typing import List, Dict, Any, Optional, Callable
 import os
-from ..env_config import config
+import json
 
 
 class NLQueryProcessor:
     """
-    Processes natural language queries using OpenAI's function calling API.
-    Converts user queries into structured function calls.
+    Processes natural language queries and converts them to function calls using OpenAI API.
     """
-
-    def __init__(self, api_key: Optional[str] = None, model: str = "gpt-4-turbo-preview"):
+    
+    def __init__(self, api_key: Optional[str] = None, model: str = "gpt-4o-mini"):
         """
-        Initialize the Natural Language Query Processor.
+        Initialize the NL Query Processor.
         
         Args:
-            api_key: OpenAI API key. If None, reads from OPENAI_API_KEY environment variable.
-            model: OpenAI model to use for function calling
+            api_key: OpenAI API key (if None, reads from OPENAI_API_KEY env var)
+            model: OpenAI model to use (default: gpt-4o-mini for cost efficiency)
         """
-        self.api_key = api_key or config.get_openai_api_key()
+        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         if not self.api_key:
-            raise ValueError(
-                "OpenAI API key is required. Set OPENAI_API_KEY in naturaldb/.env file or pass api_key parameter."
-            )
+            raise ValueError("OpenAI API key must be provided or set in OPENAI_API_KEY environment variable")
         
         self.model = model
-        self.conversation_history: List[Dict[str, Any]] = []
         
-        # Try to import openai
         try:
-            import openai
-            self.client = openai.OpenAI(api_key=self.api_key)
+            from openai import OpenAI  # type: ignore
+            self.client = OpenAI(api_key=self.api_key)
         except ImportError:
-            raise ImportError(
-                "OpenAI package is required. Install it with: pip install openai"
-            )
-
+            raise ImportError("OpenAI library not installed. Run: pip install openai")
+    
     def process_query(
         self,
         user_query: str,
         tools: List[Dict[str, Any]],
-        context: Optional[str] = None,
-        max_iterations: int = 5
+        system_prompt: Optional[str] = None,
+        context: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Process a natural language query and convert it to function calls.
+        Process a natural language query and return function calls.
         
         Args:
             user_query: The natural language query from the user
-            tools: List of available tools (from ToolRegistry)
-            context: Optional context about the database state (e.g., available tables)
-            max_iterations: Maximum number of function calling iterations
-            
-        Returns:
-            Dictionary containing:
-                - 'function_calls': List of function calls to execute
-                - 'explanation': Explanation of what will be done
-                - 'response': Final response message
-        """
-        # Build the system message
-        system_message = self._build_system_message(context)
+            tools: List of available tools (from DatabaseToolRegistry)
+            system_prompt: Optional custom system prompt
+            context: Optional context information (e.g., available tables, current state)
         
-        # Add user query to conversation
+        Returns:
+            Dictionary with:
+                - success: bool
+                - message: str (AI response)
+                - function_calls: List[Dict] (function calls to execute)
+                - error: Optional[str] (error message if failed)
+        """
+        if not system_prompt:
+            system_prompt = self._get_default_system_prompt()
+        
+        # Add context to system prompt if provided
+        if context:
+            system_prompt += f"\n\nContext:\n{context}"
+        
         messages = [
-            {"role": "system", "content": system_message},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_query}
         ]
         
-        function_calls = []
-        iterations = 0
-        
-        while iterations < max_iterations:
-            try:
-                # Call OpenAI API with function calling
-                response = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=messages,  # type: ignore
-                    tools=tools,  # type: ignore
-                    tool_choice="auto"
-                )
-                
-                message = response.choices[0].message
-                
-                # Check if the model wants to call functions
-                if message.tool_calls:
-                    # Extract function calls
-                    for tool_call in message.tool_calls:
-                        function_call = {
-                            "id": tool_call.id,
-                            "name": tool_call.function.name,  # type: ignore
-                            "arguments": json.loads(tool_call.function.arguments)  # type: ignore
-                        }
-                        function_calls.append(function_call)
-                    
-                    # For now, we'll return after first set of function calls
-                    # In a more advanced implementation, we could execute and continue conversation
-                    return {
-                        "function_calls": function_calls,
-                        "explanation": message.content or "Executing database operations...",
-                        "response": None,
-                        "finish_reason": response.choices[0].finish_reason
-                    }
-                else:
-                    # No function call, return the text response
-                    return {
-                        "function_calls": [],
-                        "explanation": None,
-                        "response": message.content,
-                        "finish_reason": response.choices[0].finish_reason
-                    }
-                
-            except Exception as e:
-                return {
-                    "error": str(e),
-                    "function_calls": [],
-                    "explanation": None,
-                    "response": None
-                }
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,  # type: ignore
+                tools=tools,  # type: ignore
+                tool_choice="auto"
+            )
             
-            iterations += 1
+            message = response.choices[0].message
+            
+            # Extract function calls if any
+            function_calls = []
+            if message.tool_calls:
+                for tool_call in message.tool_calls:
+                    function_calls.append({
+                        "id": tool_call.id,
+                        "name": tool_call.function.name,
+                        "arguments": json.loads(tool_call.function.arguments)
+                    })
+            
+            return {
+                "success": True,
+                "message": message.content or "Operation completed",
+                "function_calls": function_calls,
+                "raw_response": message
+            }
         
-        return {
-            "error": "Max iterations reached",
-            "function_calls": function_calls,
-            "explanation": None,
-            "response": None
-        }
-
+        except Exception as e:
+            return {
+                "success": False,
+                "message": "",
+                "function_calls": [],
+                "error": str(e)
+            }
+    
     def process_with_execution(
         self,
         user_query: str,
         tools: List[Dict[str, Any]],
-        executor_callback,
+        executor_callback: Callable[[str, Dict[str, Any]], Any],
+        system_prompt: Optional[str] = None,
         context: Optional[str] = None,
         max_iterations: int = 5
     ) -> Dict[str, Any]:
         """
-        Process a query with automatic function execution and multi-turn conversation.
+        Process query and automatically execute function calls in a multi-turn conversation.
         
         Args:
             user_query: The natural language query
-            tools: List of available tools
-            executor_callback: Callback function to execute function calls
+            tools: Available tools
+            executor_callback: Callback function that executes a function call
                               Should accept (function_name, arguments) and return result
-            context: Optional database context
-            max_iterations: Maximum conversation turns
-            
+            system_prompt: Optional custom system prompt
+            context: Optional context information
+            max_iterations: Maximum number of back-and-forth iterations
+        
         Returns:
-            Dictionary with final response and execution history
+            Dictionary with:
+                - success: bool
+                - response: str (final AI response)
+                - execution_history: List[Dict] (history of function calls and results)
+                - error: Optional[str]
         """
-        system_message = self._build_system_message(context)
+        if not system_prompt:
+            system_prompt = self._get_default_system_prompt()
+        
+        if context:
+            system_prompt += f"\n\nContext:\n{context}"
         
         messages = [
-            {"role": "system", "content": system_message},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_query}
         ]
         
         execution_history = []
         
-        for iteration in range(max_iterations):
-            try:
+        try:
+            for iteration in range(max_iterations):
                 response = self.client.chat.completions.create(
                     model=self.model,
                     messages=messages,  # type: ignore
@@ -173,76 +153,103 @@ class NLQueryProcessor:
                 )
                 
                 message = response.choices[0].message
-                messages.append(message.model_dump())  # Add assistant's response
+                messages.append(message)  # type: ignore
                 
-                # Check if function calls are needed
-                if message.tool_calls:
-                    for tool_call in message.tool_calls:
-                        function_name = tool_call.function.name  # type: ignore
-                        arguments = json.loads(tool_call.function.arguments)  # type: ignore
-                        
-                        # Execute the function
+                # If no tool calls, we're done
+                if not message.tool_calls:
+                    return {
+                        "success": True,
+                        "response": message.content or "Operation completed",
+                        "execution_history": execution_history
+                    }
+                
+                # Execute each tool call
+                for tool_call in message.tool_calls:
+                    function_name = tool_call.function.name
+                    arguments = json.loads(tool_call.function.arguments)
+                    
+                    # Execute the function
+                    try:
                         result = executor_callback(function_name, arguments)
+                        result_str = json.dumps(result) if not isinstance(result, str) else result
                         
-                        # Record execution
                         execution_history.append({
                             "function": function_name,
                             "arguments": arguments,
-                            "result": result
+                            "result": result,
+                            "success": True
                         })
                         
                         # Add function result to conversation
                         messages.append({
                             "role": "tool",
                             "tool_call_id": tool_call.id,
-                            "content": json.dumps(result)
+                            "content": result_str
                         })
-                else:
-                    # No more function calls, return final response
-                    return {
-                        "response": message.content,
-                        "execution_history": execution_history,
-                        "iterations": iteration + 1
-                    }
                     
-            except Exception as e:
-                return {
-                    "error": str(e),
-                    "execution_history": execution_history,
-                    "iterations": iteration + 1
-                }
+                    except Exception as e:
+                        error_msg = f"Error executing {function_name}: {str(e)}"
+                        execution_history.append({
+                            "function": function_name,
+                            "arguments": arguments,
+                            "error": str(e),
+                            "success": False
+                        })
+                        
+                        messages.append({
+                            "role": "tool",
+                            "tool_call_id": tool_call.id,
+                            "content": error_msg
+                        })
+            
+            # Max iterations reached
+            return {
+                "success": True,
+                "response": "Maximum iterations reached. Some operations may be incomplete.",
+                "execution_history": execution_history
+            }
         
-        return {
-            "error": "Max iterations reached",
-            "execution_history": execution_history,
-            "iterations": max_iterations
-        }
+        except Exception as e:
+            return {
+                "success": False,
+                "response": "",
+                "execution_history": execution_history,
+                "error": str(e)
+            }
+    
+    def _get_default_system_prompt(self) -> str:
+        """Get the default system prompt for database operations."""
+        return """You are a helpful database assistant for NaturalDB, a NoSQL database system.
 
-    def _build_system_message(self, context: Optional[str] = None) -> str:
-        """Build the system message for the LLM."""
-        base_message = """You are a helpful assistant for NaturalDB, a natural language-driven NoSQL database system.
+Your role is to help users interact with their database using natural language. You can:
+- Create and manage tables
+- Insert, update, and delete records
+- Query data using filters, projections, and aggregations
+- Perform joins between tables
+- Import and export data
 
-Your role is to interpret user queries and convert them into appropriate database operations using the available functions.
+Guidelines:
+- Be precise and confirm sensitive operations (updates, deletes)
+- When creating filters, use the correct operators: eq, ne, gt, gte, lt, lte, in, nin, contains
+- For aggregations, use operations: count, sum, avg, min, max
+- Always provide clear feedback about what you're doing
+- If a user's request is ambiguous, ask for clarification
 
-Key guidelines:
-1. Always use the provided functions to interact with the database
-2. For queries, prefer using 'select' for complex operations or specific methods like 'filter', 'find_all', etc.
-3. When inserting or updating data, ensure the data structure matches the table schema
-4. For sensitive operations (update, delete), acknowledge that confirmation may be required
-5. If you need more information from the user, ask clarifying questions
-6. Provide clear explanations of what operations you're performing
+Available operators for filters:
+- eq (equal), ne (not equal), gt (greater than), gte (greater than or equal)
+- lt (less than), lte (less than or equal), in (in list), nin (not in list)
+- contains (substring match)
 
-Remember:
-- Table names and field names are case-sensitive
-- Support nested field access with dot notation (e.g., 'specs.price')
-- Available operators: eq, ne, gt, gte, lt, lte, contains
-"""
-        
-        if context:
-            base_message += f"\n\nCurrent database context:\n{context}"
-        
-        return base_message
-
-    def clear_history(self):
-        """Clear conversation history."""
-        self.conversation_history = []
+Remember: Execute operations only when you're confident about the user's intent."""
+    
+    @staticmethod
+    def is_available() -> bool:
+        """Check if OpenAI API is available."""
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            return False
+        try:
+            import openai  # type: ignore
+            return True
+        except ImportError:
+            return False
