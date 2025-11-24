@@ -77,6 +77,13 @@ def execute_query(user_id, db_name):
                     ascending = (direction.lower() != 'desc')
                     query = query.sort(field, ascending)
         
+        # Get total count before applying pagination
+        # We need to count before limit/skip to get the total
+        total_count = None
+        if 'skip' in data or 'limit' in data:
+            # Count all matching records before pagination
+            total_count = query.count()
+        
         # Apply skip/limit
         if 'skip' in data:
             query = query.skip(data['skip'])
@@ -143,6 +150,7 @@ def execute_query(user_id, db_name):
             'db_name': db_name,
             'table': table_name,
             'count': len(results_list),
+            'total': total_count if total_count is not None else len(results_list),
             'results': results_list
         })
         
