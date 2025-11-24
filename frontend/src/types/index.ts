@@ -64,6 +64,7 @@ export interface QueryResponse<T = unknown> {
   db_name: string;
   table: string;
   count: number;
+  total?: number;  // Total count before pagination
   results: T[];
 }
 

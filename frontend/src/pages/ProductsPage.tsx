@@ -154,7 +154,7 @@ const ProductsPage = () => {
       });
 
       setProducts(response.results);
-      setTotal(response.count);
+      setTotal(response.total ?? response.count);  // Use total if available, fallback to count
     } catch (error) {
       console.error('Failed to load products:', error);
     } finally {
