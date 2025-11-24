@@ -4,6 +4,10 @@ NaturalDB - Unified Natural Language Interface for Database Operations
 
 from typing import Optional, Dict, Any, Callable
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 class NaturalDB:
@@ -17,7 +21,7 @@ class NaturalDB:
         user: Any,
         database: Any,
         api_key: Optional[str] = None,
-        model: str = "gpt-4o-mini",
+        model: str = "gpt-4o",
         confirmation_callback: Optional[Callable[[str, Dict[str, Any]], bool]] = None,
         data_path: Optional[str] = None
     ):

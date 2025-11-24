@@ -5,6 +5,10 @@ Creates and configures the NaturalDB REST API application
 
 from flask import Flask, jsonify
 from flask_cors import CORS
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Register blueprints
 from .controllers.database_controller import database_bp
@@ -12,6 +16,7 @@ from .controllers.table_controller import table_bp
 from .controllers.record_controller import record_bp
 from .controllers.query_controller import query_bp
 from .controllers.user_controller import user_bp
+from .controllers.nl_query_controller import nl_query_bp
 
 def create_app(config=None):
     """
@@ -42,7 +47,9 @@ def create_app(config=None):
     app.register_blueprint(table_bp, url_prefix='/api/databases/<user_id>/<db_name>/tables')
     app.register_blueprint(record_bp, url_prefix='/api/databases/<user_id>/<db_name>/tables/<table_name>/records')
     app.register_blueprint(query_bp, url_prefix='/api/databases/<user_id>/<db_name>/query')
+    app.register_blueprint(nl_query_bp, url_prefix='/api/databases/<user_id>/<db_name>/nl-query')
     app.register_blueprint(user_bp, url_prefix='/api/users')
+    app.register_blueprint(nl_query_bp, url_prefix='/api/databases/<user_id>/<db_name>/nl-query')
     
     # Health check endpoint
     @app.route('/health')
@@ -65,6 +72,7 @@ def create_app(config=None):
                 'tables': '/api/databases/{user_id}/{db_name}/tables',
                 'records': '/api/databases/{user_id}/{db_name}/tables/{table_name}/records',
                 'query': '/api/databases/{user_id}/{db_name}/query',
+                'nl_query': '/api/databases/{user_id}/{db_name}/nl-query',
                 'users': '/api/users'
             }
         })

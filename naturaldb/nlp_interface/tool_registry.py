@@ -14,6 +14,20 @@ class DatabaseToolRegistry:
     # Sensitive operations that require confirmation
     SENSITIVE_OPERATIONS = {'update', 'delete', 'drop_table'}
     
+    # Core methods to register (to avoid token limit issues)
+    CORE_METHODS = [
+        'list_tables',
+        'find_all', 
+        'find_by_id',
+        'filter',
+        'select',
+        'insert',
+        'update',
+        'delete',
+        'create_table',
+        'drop_table',
+    ]
+    
     @staticmethod
     def get_all_tools(query_engine_instance: Optional[Any] = None) -> List[Dict[str, Any]]:
         """
@@ -116,6 +130,7 @@ class DatabaseToolRegistry:
         # Register all QueryEngine methods as tools
         tools = ToolRegistry.register_class_methods(
             target_class=QueryEngine,
+            method_names=DatabaseToolRegistry.CORE_METHODS,  # Only register core methods
             exclude_methods=exclude_methods,
             method_descriptions=method_descriptions,
             param_descriptions=param_descriptions,

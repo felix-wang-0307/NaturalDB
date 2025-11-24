@@ -74,10 +74,16 @@ class OpenAiTool:
             if param == "return":
                 continue
             # Get description from provided descriptions or docstring
-            props[param] = {
-                "type": self._map_type(p_type.annotation),
+            param_schema = {
                 "description": self._get_param_description(param),
             }
+            
+            # Get the type and handle array items
+            param_type_info = self._get_type_schema(p_type.annotation)
+            param_schema.update(param_type_info)
+            
+            props[param] = param_schema
+            
             # Check if the parameter is required (no default value)
             if (
                 param not in inspect.signature(self.func).parameters
@@ -86,6 +92,67 @@ class OpenAiTool:
             ):
                 required.append(param)
         return {"type": "object", "properties": props, "required": required}
+    
+    def _get_type_schema(self, p_type: type) -> dict:
+        """
+        Get the JSON schema for a parameter type.
+        Returns a dict with 'type' and optionally 'items' for arrays.
+        """
+        # Handle None type
+        if p_type is type(None):
+            return {"type": "null"}
+        
+        # Get the origin type for typing generics (e.g., List[str] -> list)
+        origin = getattr(p_type, "__origin__", None)
+        
+        if origin is not None:
+            # Handle Optional[X] which is Union[X, None]
+            if origin is Union:
+                args = getattr(p_type, "__args__", ())
+                # Filter out NoneType
+                non_none_args = [arg for arg in args if arg is not type(None)]
+                if non_none_args:
+                    # Use the first non-None type
+                    return self._get_type_schema(non_none_args[0])
+            # Handle List[X]
+            elif origin is list:
+                args = getattr(p_type, "__args__", ())
+                if args:
+                    # Get the item type
+                    item_type = args[0]
+                    item_schema = self._get_type_schema(item_type)
+                    return {
+                        "type": "array",
+                        "items": item_schema
+                    }
+                else:
+                    # List without type parameter
+                    return {
+                        "type": "array",
+                        "items": {"type": "string"}  # Default to string
+                    }
+            # Handle Dict
+            elif origin is dict:
+                return {"type": "object"}
+        
+        # Simple type mapping
+        type_mapping = {
+            str: "string",
+            int: "integer",
+            float: "number",
+            bool: "boolean",
+            dict: "object",
+            list: "array",
+        }
+        
+        type_str = type_mapping.get(p_type, "string")
+        result = {"type": type_str}
+        
+        # Add items for plain list type
+        if type_str == "array":
+            result["items"] = {"type": "string"}
+        
+        return result
 
     def _map_type(self, p_type: type) -> str:
         """
