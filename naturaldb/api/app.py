@@ -47,7 +47,6 @@ def create_app(config=None):
     app.register_blueprint(table_bp, url_prefix='/api/databases/<user_id>/<db_name>/tables')
     app.register_blueprint(record_bp, url_prefix='/api/databases/<user_id>/<db_name>/tables/<table_name>/records')
     app.register_blueprint(query_bp, url_prefix='/api/databases/<user_id>/<db_name>/query')
-    app.register_blueprint(nl_query_bp, url_prefix='/api/databases/<user_id>/<db_name>/nl-query')
     app.register_blueprint(user_bp, url_prefix='/api/users')
     app.register_blueprint(nl_query_bp, url_prefix='/api/databases/<user_id>/<db_name>/nl-query')
     
