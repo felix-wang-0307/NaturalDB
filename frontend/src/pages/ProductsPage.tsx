@@ -51,16 +51,16 @@ const ProductsPage = () => {
   const pageSize = 24;
 
   const categories = [
-    'USBCables',
-    'WallChargers',
-    'Smartwatches',
-    'Keyboards&Mice',
-    'Speakers',
-    'Headphones&Earbuds',
-    'WirelessUSBAdapters',
-    'MixerGrinders',
-    'Televisions',
-    'InvertersStabilizers',
+    { value: 'USBCables', label: 'USB Cables' },
+    { value: 'WallChargers', label: 'Wall Chargers' },
+    { value: 'Smartwatches', label: 'Smartwatches' },
+    { value: 'Keyboards&Mice', label: 'Keyboards & Mice' },
+    { value: 'Speakers', label: 'Speakers' },
+    { value: 'Headphones&Earbuds', label: 'Headphones & Earbuds' },
+    { value: 'WirelessUSBAdapters', label: 'Wireless USB Adapters' },
+    { value: 'MixerGrinders', label: 'Mixer Grinders' },
+    { value: 'Televisions', label: 'Televisions' },
+    { value: 'InvertersStabilizers', label: 'Inverters & Stabilizers' },
   ];
 
   const loadProducts = useCallback(async () => {
@@ -86,17 +86,22 @@ const ProductsPage = () => {
         });
       }
 
-      filters.push({
-        field: 'discounted_price',
-        operator: 'gte',
-        value: priceRange[0],
-      });
+      // 只在用户设置了非默认值时才添加price filters
+      if (priceRange[0] > 0) {
+        filters.push({
+          field: 'discounted_price',
+          operator: 'gte',
+          value: priceRange[0],
+        });
+      }
 
-      filters.push({
-        field: 'discounted_price',
-        operator: 'lte',
-        value: priceRange[1],
-      });
+      if (priceRange[1] < 100000) {
+        filters.push({
+          field: 'discounted_price',
+          operator: 'lte',
+          value: priceRange[1],
+        });
+      }
 
       if (minRating > 0) {
         filters.push({
@@ -117,6 +122,9 @@ const ProductsPage = () => {
       // Build sort
       const [field, direction] = sortBy.split('_');
       const sort = [{ field, direction: direction as 'asc' | 'desc' }];
+
+      console.log('Filters being sent:', JSON.stringify(filters, null, 2));
+      console.log('MinRating value:', minRating);
 
       const response = await getProducts({
         filters,
@@ -202,8 +210,8 @@ const ProductsPage = () => {
                 allowClear
               >
                 {categories.map((cat) => (
-                  <Option key={cat} value={cat}>
-                    {cat}
+                  <Option key={cat.value} value={cat.value}>
+                    {cat.label}
                   </Option>
                 ))}
               </Select>

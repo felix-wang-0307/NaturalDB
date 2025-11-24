@@ -40,8 +40,8 @@ export interface Category {
 
 export interface QueryFilter {
   field: string;
-  operator: 'eq' | 'ne' | 'gt' | 'gte' | 'lt' | 'lte' | 'in' | 'nin' | 'contains';
-  value: string | number | boolean | string[] | number[];
+  operator: 'eq' | 'ne' | 'gt' | 'gte' | 'lt' | 'lte' | 'contains';
+  value: string | number | boolean;
 }
 
 export interface QuerySort {
