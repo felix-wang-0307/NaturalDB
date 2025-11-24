@@ -11,57 +11,30 @@ from ..storage_system.storage import TableStorage
 class QueryOperations:
     """
     Provides various query operations for NaturalDB records.
+    Pure operations on List[Record] - no storage dependencies.
     """
     
-    def __init__(self, user: User, database: Database, table: Table):
-        self.user = user
-        self.database = database
-        self.table = table
-        self.table_storage = TableStorage(user, database, table)
-    
-    def find_all(self) -> List[Record]:
-        """
-        Retrieve all records from the table.
-        
-        Returns:
-            List of all records in the table
-        """
-        records_dict = self.table_storage.load_all_records()
-        return list(records_dict.values())
-    
-    def find_by_id(self, record_id: str) -> Optional[Record]:
-        """
-        Find a record by its ID.
-        
-        Args:
-            record_id: The ID of the record to find
-            
-        Returns:
-            The record if found, None otherwise
-        """
-        try:
-            return self.table_storage.load_record(record_id)
-        except (FileNotFoundError, OSError):
-            return None
-    
-    def filter(self, condition: Callable[[Record], bool]) -> List[Record]:
+    @staticmethod
+    def filter(records: List[Record], condition: Callable[[Record], bool]) -> List[Record]:
         """
         Filter records based on a condition function.
         
         Args:
+            records: List of records to filter
             condition: A function that takes a Record and returns a boolean
             
         Returns:
             List of records that satisfy the condition
         """
-        all_records = self.find_all()
-        return [record for record in all_records if condition(record)]
+        return [record for record in records if condition(record)]
     
-    def filter_by_field(self, field_name: str, value: Any, operator: str = "eq") -> List[Record]:
+    @staticmethod
+    def filter_by_field(records: List[Record], field_name: str, value: Any, operator: str = "eq") -> List[Record]:
         """
         Filter records by a specific field value.
         
         Args:
+            records: List of records to filter
             field_name: Name of the field to filter by
             value: Value to compare against
             operator: Comparison operator ('eq', 'ne', 'gt', 'gte', 'lt', 'lte', 'contains')
@@ -70,7 +43,7 @@ class QueryOperations:
             List of filtered records
         """
         def condition(record: Record) -> bool:
-            field_value = self._get_nested_field(record.data, field_name)
+            field_value = QueryOperations._get_nested_field(record.data, field_name)
             
             if operator == "eq":
                 return field_value == value
@@ -89,9 +62,10 @@ class QueryOperations:
             else:
                 raise ValueError(f"Unsupported operator: {operator}")
         
-        return self.filter(condition)
+        return QueryOperations.filter(records, condition)
     
-    def project(self, records: List[Record], fields: List[str]) -> List[Dict[str, Any]]:
+    @staticmethod
+    def project(records: List[Record], fields: List[str]) -> List[Dict[str, Any]]:
         """
         Project specific fields from records.
         
@@ -106,13 +80,14 @@ class QueryOperations:
         for record in records:
             projected = {}
             for field in fields:
-                field_value = self._get_nested_field(record.data, field)
-                self._set_nested_field(projected, field, field_value)
+                field_value = QueryOperations._get_nested_field(record.data, field)
+                QueryOperations._set_nested_field(projected, field, field_value)
             result.append(projected)
         
         return result
     
-    def group_by(self, records: List[Record], field_name: str) -> Dict[Any, List[Record]]:
+    @staticmethod
+    def group_by(records: List[Record], field_name: str) -> Dict[Any, List[Record]]:
         """
         Group records by a specific field.
         
@@ -125,14 +100,15 @@ class QueryOperations:
         """
         groups = {}
         for record in records:
-            group_key = self._get_nested_field(record.data, field_name)
+            group_key = QueryOperations._get_nested_field(record.data, field_name)
             if group_key not in groups:
                 groups[group_key] = []
             groups[group_key].append(record)
         
         return groups
     
-    def aggregate(self, records: List[Record], field_name: str, operation: str) -> Any:
+    @staticmethod
+    def aggregate(records: List[Record], field_name: str, operation: str) -> Any:
         """
         Perform aggregation on a field across records.
         
@@ -152,7 +128,7 @@ class QueryOperations:
         
         values = []
         for record in records:
-            value = self._get_nested_field(record.data, field_name)
+            value = QueryOperations._get_nested_field(record.data, field_name)
             if value is not None:
                 values.append(value)
         
@@ -170,7 +146,8 @@ class QueryOperations:
         else:
             raise ValueError(f"Unsupported aggregation operation: {operation}")
     
-    def sort(self, records: List[Record], field_name: str, ascending: bool = True) -> List[Record]:
+    @staticmethod
+    def sort(records: List[Record], field_name: str, ascending: bool = True) -> List[Record]:
         """
         Sort records by a specific field.
         
@@ -183,13 +160,14 @@ class QueryOperations:
             Sorted list of records
         """
         def sort_key(record: Record):
-            value = self._get_nested_field(record.data, field_name)
+            value = QueryOperations._get_nested_field(record.data, field_name)
             # Handle None values by putting them at the end
             return (value is None, value)
         
         return sorted(records, key=sort_key, reverse=not ascending)
     
-    def limit(self, records: List[Record], count: int, offset: int = 0) -> List[Record]:
+    @staticmethod
+    def limit(records: List[Record], count: int, offset: int = 0) -> List[Record]:
         """
         Limit the number of records returned.
         
@@ -203,7 +181,8 @@ class QueryOperations:
         """
         return records[offset:offset + count]
     
-    def _get_nested_field(self, data: Dict[str, Any], field_path: str) -> Any:
+    @staticmethod
+    def _get_nested_field(data: Dict[str, Any], field_path: str) -> Any:
         """
         Get a nested field value using dot notation.
         
@@ -228,7 +207,8 @@ class QueryOperations:
         
         return current
     
-    def _set_nested_field(self, data: Dict[str, Any], field_path: str, value: Any) -> None:
+    @staticmethod
+    def _set_nested_field(data: Dict[str, Any], field_path: str, value: Any) -> None:
         """
         Set a nested field value using dot notation.
         
@@ -383,5 +363,137 @@ class JoinOperations:
         return current
 
 
-# Remove the assignment at the end of the file
-# QueryOperations._get_nested_field_static = JoinOperations._get_nested_field_static
+class TableQuery:
+    """
+    Chainable query builder for table operations - MongoDB style.
+    
+    Example:
+        query = TableQuery(records)
+        result = query.filter_by('age', 30, 'gt').sort('name').limit(10).execute()
+    """
+    
+    def __init__(self, records: List[Record]):
+        """
+        Initialize with a list of records.
+        
+        Args:
+            records: Initial list of records to query
+        """
+        self._records = records
+    
+    def filter(self, condition: Callable[[Record], bool]) -> 'TableQuery':
+        """
+        Filter records based on a condition function.
+        Returns self for chaining.
+        """
+        self._records = QueryOperations.filter(self._records, condition)
+        return self
+    
+    def filter_by(self, field_name: str, value: Any, operator: str = "eq") -> 'TableQuery':
+        """
+        Filter records by a specific field value.
+        Returns self for chaining.
+        """
+        self._records = QueryOperations.filter_by_field(self._records, field_name, value, operator)
+        return self
+    
+    def where(self, field_name: str, value: Any, operator: str = "eq") -> 'TableQuery':
+        """
+        Alias for filter_by - more SQL-like syntax.
+        Returns self for chaining.
+        """
+        return self.filter_by(field_name, value, operator)
+    
+    def project(self, fields: List[str]) -> List[Dict[str, Any]]:
+        """
+        Project specific fields from records.
+        This is a terminal operation (returns data, not chainable).
+        """
+        return QueryOperations.project(self._records, fields)
+    
+    def select(self, fields: List[str]) -> List[Dict[str, Any]]:
+        """
+        Alias for project - more SQL-like syntax.
+        This is a terminal operation.
+        """
+        return self.project(fields)
+    
+    def sort(self, field_name: str, ascending: bool = True) -> 'TableQuery':
+        """
+        Sort records by a field.
+        Returns self for chaining.
+        """
+        self._records = QueryOperations.sort(self._records, field_name, ascending)
+        return self
+    
+    def order_by(self, field_name: str, ascending: bool = True) -> 'TableQuery':
+        """
+        Alias for sort - more SQL-like syntax.
+        Returns self for chaining.
+        """
+        return self.sort(field_name, ascending)
+    
+    def limit(self, count: int, offset: int = 0) -> 'TableQuery':
+        """
+        Limit the number of records.
+        Returns self for chaining.
+        """
+        self._records = QueryOperations.limit(self._records, count, offset)
+        return self
+    
+    def skip(self, offset: int) -> 'TableQuery':
+        """
+        Skip a number of records - MongoDB style.
+        Returns self for chaining.
+        """
+        self._records = self._records[offset:]
+        return self
+    
+    def group_by(self, field_name: str) -> Dict[Any, List[Record]]:
+        """
+        Group records by a field.
+        This is a terminal operation.
+        """
+        return QueryOperations.group_by(self._records, field_name)
+    
+    def count(self) -> int:
+        """
+        Count the number of records.
+        This is a terminal operation.
+        """
+        return len(self._records)
+    
+    def first(self) -> Optional[Record]:
+        """
+        Get the first record.
+        This is a terminal operation.
+        """
+        return self._records[0] if self._records else None
+    
+    def last(self) -> Optional[Record]:
+        """
+        Get the last record.
+        This is a terminal operation.
+        """
+        return self._records[-1] if self._records else None
+    
+    def all(self) -> List[Record]:
+        """
+        Get all records.
+        This is a terminal operation.
+        """
+        return self._records
+    
+    def execute(self) -> List[Record]:
+        """
+        Execute the query and return results.
+        Alias for all() - more explicit.
+        """
+        return self._records
+    
+    def to_dict(self) -> List[Dict[str, Any]]:
+        """
+        Convert all records to list of dictionaries.
+        This is a terminal operation.
+        """
+        return [record.data for record in self._records]

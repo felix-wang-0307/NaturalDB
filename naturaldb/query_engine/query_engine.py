@@ -8,7 +8,7 @@ import os
 from ..entities import User, Database, Table, Record
 from ..storage_system.storage import Storage, DatabaseStorage, TableStorage
 from ..json_parser import JSONParser
-from .operations import QueryOperations, JoinOperations
+from .operations import QueryOperations, JoinOperations, TableQuery
 
 
 class QueryEngine:
@@ -25,6 +25,35 @@ class QueryEngine:
         # Ensure database exists
         if not os.path.exists(self.database_storage.base_path):
             self.storage.create_database(user, database)
+
+    def table(self, table_name: str) -> TableQuery:
+        """
+        Get a chainable query builder for a table - MongoDB style.
+        
+        Args:
+            table_name: Name of the table
+            
+        Returns:
+            TableQuery instance for chaining operations
+            
+        Examples:
+            # Find all users with age > 30, sorted by name
+            engine.table('users').filter_by('age', 30, 'gt').sort('name').all()
+            
+            # Get first 10 products with price > 100
+            engine.table('products').where('price', 100, 'gt').limit(10).execute()
+            
+            # Count orders with status 'completed'
+            engine.table('orders').filter_by('status', 'completed').count()
+        """
+        records = self.find_all(table_name)
+        return TableQuery(records)
+    
+    def query(self, table_name: str) -> TableQuery:
+        """
+        Alias for table() - provides chainable query interface.
+        """
+        return self.table(table_name)
 
     def create_table(self, table: Table) -> bool:
         """
@@ -43,15 +72,15 @@ class QueryEngine:
             print(f"Error creating table: {e}")
             return False
 
-    def get_table_operations(self, table_name: str) -> Optional[QueryOperations]:
+    def get_table_storage(self, table_name: str) -> Optional[TableStorage]:
         """
-        Get query operations for a specific table.
+        Get table storage for a specific table.
 
         Args:
             table_name: Name of the table
 
         Returns:
-            QueryOperations instance or None if table doesn't exist
+            TableStorage instance or None if table doesn't exist
         """
         table = Table(name=table_name, indexes={})
         table_path = self.database_storage.get_table_path(table)
@@ -59,7 +88,24 @@ class QueryEngine:
         if not os.path.exists(table_path):
             return None
 
-        return QueryOperations(self.user, self.database, table)
+        return TableStorage(self.user, self.database, table)
+    
+    def _load_all_records(self, table_name: str) -> List[Record]:
+        """
+        Internal method to load all records from a table.
+        
+        Args:
+            table_name: Name of the table
+            
+        Returns:
+            List of all records
+        """
+        table_storage = self.get_table_storage(table_name)
+        if table_storage is None:
+            return []
+        
+        records_dict = table_storage.load_all_records()
+        return list(records_dict.values())
 
     def insert(self, table_name: str, record: Record) -> bool:
         """
@@ -73,19 +119,19 @@ class QueryEngine:
             True if record was inserted successfully
         """
         try:
-            operations = self.get_table_operations(table_name)
-            if not operations:
+            table_storage = self.get_table_storage(table_name)
+            if table_storage is None:
                 # Create table if it doesn't exist
                 table = Table(name=table_name, indexes={})
                 if not self.create_table(table):
                     return False
-                operations = self.get_table_operations(table_name)
+                table_storage = self.get_table_storage(table_name)
 
-            # Ensure operations is not None before accessing its attributes
-            if not operations:
+            # Ensure table_storage is not None before accessing its attributes
+            if table_storage is None:
                 return False
 
-            operations.table_storage.save_record(record)
+            table_storage.save_record(record)
             return True
         except Exception as e:
             print(f"Error inserting record: {e}")
@@ -102,11 +148,14 @@ class QueryEngine:
         Returns:
             Record if found, None otherwise
         """
-        operations = self.get_table_operations(table_name)
-        if not operations:
+        table_storage = self.get_table_storage(table_name)
+        if table_storage is None:
             return None
 
-        return operations.find_by_id(record_id)
+        try:
+            return table_storage.load_record(record_id)
+        except (FileNotFoundError, OSError):
+            return None
 
     def find_all(self, table_name: str) -> List[Record]:
         """
@@ -118,11 +167,7 @@ class QueryEngine:
         Returns:
             List of all records in the table
         """
-        operations = self.get_table_operations(table_name)
-        if not operations:
-            return []
-
-        return operations.find_all()
+        return self._load_all_records(table_name)
 
     def update(self, table_name: str, record: Record) -> bool:
         """
@@ -136,16 +181,16 @@ class QueryEngine:
             True if record was updated successfully
         """
         try:
-            operations = self.get_table_operations(table_name)
-            if not operations:
+            table_storage = self.get_table_storage(table_name)
+            if table_storage is None:
                 return False
 
             # Check if record exists
-            existing = operations.find_by_id(record.id)
+            existing = self.find_by_id(table_name, record.id)
             if not existing:
                 return False
 
-            operations.table_storage.save_record(record)
+            table_storage.save_record(record)
             return True
         except Exception as e:
             print(f"Error updating record: {e}")
@@ -163,16 +208,16 @@ class QueryEngine:
             True if record was deleted successfully
         """
         try:
-            operations = self.get_table_operations(table_name)
-            if not operations:
+            table_storage = self.get_table_storage(table_name)
+            if table_storage is None:
                 return False
 
             # Check if record exists
-            existing = operations.find_by_id(record_id)
+            existing = self.find_by_id(table_name, record_id)
             if not existing:
                 return False
 
-            operations.table_storage.delete_record(record_id)
+            table_storage.delete_record(record_id)
             return True
         except Exception as e:
             print(f"Error deleting record: {e}")
@@ -193,11 +238,11 @@ class QueryEngine:
         Returns:
             List of filtered records
         """
-        operations = self.get_table_operations(table_name)
-        if not operations:
+        records = self._load_all_records(table_name)
+        if not records:
             return []
 
-        return operations.filter_by_field(field_name, value, operator)
+        return QueryOperations.filter_by_field(records, field_name, value, operator)
 
     def project(
         self,
@@ -216,11 +261,9 @@ class QueryEngine:
         Returns:
             List of projected records
         """
-        operations = self.get_table_operations(table_name)
-        if not operations:
+        records = self._load_all_records(table_name)
+        if not records:
             return []
-
-        records = operations.find_all()
 
         # Apply filtering if conditions are provided
         if conditions:
@@ -238,7 +281,7 @@ class QueryEngine:
                     if self._evaluate_condition(r, field_name, value, operator)
                 ]
 
-        return operations.project(records, fields)
+        return QueryOperations.project(records, fields)
 
     def rename(
         self,
@@ -265,11 +308,9 @@ class QueryEngine:
             # SELECT user_id AS id FROM users WHERE age > 30
             engine.rename('users', {'user_id': 'id'}, {'age': {'operator': 'gt', 'value': 30}})
         """
-        operations = self.get_table_operations(table_name)
-        if not operations:
+        records = self._load_all_records(table_name)
+        if not records:
             return []
-
-        records = operations.find_all()
 
         # Apply filtering if conditions are provided
         if conditions:
@@ -293,7 +334,7 @@ class QueryEngine:
             renamed_record = {}
             for original_field, new_field in field_mapping.items():
                 # Support nested field access
-                field_value = operations._get_nested_field(record.data, original_field)
+                field_value = QueryOperations._get_nested_field(record.data, original_field)
                 renamed_record[new_field] = field_value
             result.append(renamed_record)
 
@@ -316,11 +357,9 @@ class QueryEngine:
         Provide a flexible interface to perform SQL-like SELECT operations.
 
         """
-        operations = self.get_table_operations(from_table)
-        if not operations:
+        records = self._load_all_records(from_table)
+        if not records:
             return []
-
-        records = operations.find_all()
 
         # Apply WHERE filtering
         if where:
@@ -368,15 +407,15 @@ class QueryEngine:
 
         # Apply ORDER BY
         if order_by:
-            records = operations.sort(records, order_by, ascending)
+            records = QueryOperations.sort(records, order_by, ascending)
 
         # Apply LIMIT
         if limit:
-            records = operations.limit(records, limit)
+            records = QueryOperations.limit(records, limit)
 
         # Apply field selection and projection
         if fields != "*":
-            records = operations.project(records, fields.split(","))
+            records = QueryOperations.project(records, fields.split(","))
             return [record for record in records]
         else:
             return [record.data for record in records]
@@ -398,12 +437,11 @@ class QueryEngine:
         Returns:
             Dictionary of grouped results
         """
-        operations = self.get_table_operations(table_name)
-        if not operations:
+        records = self._load_all_records(table_name)
+        if not records:
             return {}
 
-        records = operations.find_all()
-        groups = operations.group_by(records, field_name)
+        groups = QueryOperations.group_by(records, field_name)
 
         if not aggregations:
             # Return the grouped records themselves, not just counts
@@ -414,7 +452,7 @@ class QueryEngine:
             group_result = {"count": len(group_records)}
 
             for agg_field, agg_operation in aggregations.items():
-                agg_value = operations.aggregate(
+                agg_value = QueryOperations.aggregate(
                     group_records, agg_field, agg_operation
                 )
                 group_result[f"{agg_operation}_{agg_field}"] = agg_value
@@ -442,15 +480,14 @@ class QueryEngine:
         Returns:
             Sorted list of records
         """
-        operations = self.get_table_operations(table_name)
-        if not operations:
+        records = self._load_all_records(table_name)
+        if not records:
             return []
 
-        records = operations.find_all()
-        sorted_records = operations.sort(records, field_name, ascending)
+        sorted_records = QueryOperations.sort(records, field_name, ascending)
 
         if limit:
-            sorted_records = operations.limit(sorted_records, limit)
+            sorted_records = QueryOperations.limit(sorted_records, limit)
 
         return sorted_records
 
@@ -485,14 +522,11 @@ class QueryEngine:
         Returns:
             List of flattened joined records
         """
-        left_operations = self.get_table_operations(left_table)
-        right_operations = self.get_table_operations(right_table)
+        left_records = self._load_all_records(left_table)
+        right_records = self._load_all_records(right_table)
 
-        if not left_operations or not right_operations:
+        if not left_records or not right_records:
             return []
-
-        left_records = left_operations.find_all()
-        right_records = right_operations.find_all()
 
         if join_type == "inner":
             return JoinOperations.inner_join(
@@ -616,10 +650,7 @@ class QueryEngine:
         Returns:
             True if condition is satisfied
         """
-        operations = QueryOperations(
-            self.user, self.database, Table(name="temp", indexes={})
-        )
-        field_value = operations._get_nested_field(record.data, field_name)
+        field_value = QueryOperations._get_nested_field(record.data, field_name)
 
         if operator == "eq":
             return field_value == value

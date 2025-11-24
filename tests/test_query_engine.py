@@ -111,9 +111,10 @@ class TestQueryEngineBasicOperations:
         record_path = os.path.join(table_path, "1.json")
         assert os.path.exists(record_path), "Record should exist in new table"
         
-        # Verify table operations work
-        operations = query_engine.get_table_operations("new_table")
-        assert operations is not None
+        # Verify table can be queried
+        found = query_engine.find_by_id("new_table", "1")
+        assert found is not None
+        assert found.data["title"] == "Product A"
 
     def test_find_by_id(self, query_engine):
         """Test finding a record by ID"""

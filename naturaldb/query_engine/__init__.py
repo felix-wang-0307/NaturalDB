@@ -2,6 +2,6 @@
 # This module provides JSON parsing and query execution capabilities
 
 from .query_engine import QueryEngine
-from .operations import QueryOperations
+from .operations import QueryOperations, JoinOperations, TableQuery
 
-__all__ = ['QueryEngine', 'QueryOperations']
+__all__ = ['QueryEngine', 'QueryOperations', 'JoinOperations', 'TableQuery']
