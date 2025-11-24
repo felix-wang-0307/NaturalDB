@@ -7,6 +7,7 @@ import pytest
 import os
 import tempfile
 import sys
+from typing import Any
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -461,15 +462,15 @@ class TestJSONParserRoundTrip:
 
 class TestJSONParserEdgeCases:
     """Test edge cases and boundary conditions"""
-
     def test_parse_deeply_nested(self):
         """Test parsing deeply nested structures"""
         # Create a deeply nested object
-        nested = {"level": 1}
-        current = nested
+        nested: dict[str, Any] = {"level": 1}
+        current: dict[str, Any] = nested
         for i in range(2, 20):
-            current["next"] = {"level": i}
-            current = current["next"]
+            next_level: dict[str, Any] = {"level": i}
+            current["next"] = next_level
+            current = next_level
         
         json_str = JSONParser.to_json_string(nested)
         parsed = JSONParser.parse_string(json_str)
@@ -479,6 +480,7 @@ class TestJSONParserEdgeCases:
         for i in range(1, 20):
             assert current["level"] == i
             if i < 19:
+                current = current["next"]
                 current = current["next"]
 
     def test_parse_large_array(self):

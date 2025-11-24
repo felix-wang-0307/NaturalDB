@@ -753,5 +753,170 @@ class TestQueryEngineEdgeCases:
         assert found.data["user"]["profile"]["personal"]["name"] == "Alice"
 
 
+class TestQueryEngineRenameOperations:
+    """Test field renaming (SQL AS clause functionality)"""
+    
+    def test_rename_simple_fields(self, query_engine, temp_data_dir):
+        """Test renaming simple fields"""
+        query_engine.create_table("users")
+        query_engine.insert("users", {"id": "1", "user_id": 101, "user_name": "Alice", "age": 30})
+        query_engine.insert("users", {"id": "2", "user_id": 102, "user_name": "Bob", "age": 25})
+        
+        # Rename user_id -> id, user_name -> name
+        results = query_engine.rename("users", {"user_id": "id", "user_name": "name"})
+        
+        assert len(results) == 2
+        assert "id" in results[0]
+        assert "name" in results[0]
+        assert "user_id" not in results[0]
+        assert "user_name" not in results[0]
+        assert results[0]["id"] == 101
+        assert results[0]["name"] == "Alice"
+    
+    def test_rename_with_conditions(self, query_engine, temp_data_dir):
+        """Test renaming with filtering conditions"""
+        query_engine.create_table("users")
+        query_engine.insert("users", {"id": "1", "user_id": 101, "user_name": "Alice", "age": 30})
+        query_engine.insert("users", {"id": "2", "user_id": 102, "user_name": "Bob", "age": 25})
+        
+        # Rename only for users with age > 25
+        results = query_engine.rename(
+            "users",
+            {"user_id": "id", "user_name": "name"},
+            conditions={"age": {"operator": "gt", "value": 25}}
+        )
+        
+        assert len(results) == 1
+        assert results[0]["id"] == 101
+        assert results[0]["name"] == "Alice"
+    
+    def test_select_without_aliases(self, query_engine, temp_data_dir):
+        """Test SQL-like SELECT without aliases"""
+        query_engine.create_table("users")
+        query_engine.insert("users", {"id": "1", "user_id": 101, "user_name": "Alice", "age": 30})
+        query_engine.insert("users", {"id": "2", "user_id": 102, "user_name": "Bob", "age": 25})
+        
+        # SELECT user_id, user_name FROM users
+        results = query_engine.select("users", fields=["user_id", "user_name"])
+        
+        assert len(results) == 2
+        assert set(results[0].keys()) == {"user_id", "user_name"}
+    
+    def test_select_with_aliases(self, query_engine, temp_data_dir):
+        """Test SQL-like SELECT with field aliases"""
+        query_engine.create_table("users")
+        query_engine.insert("users", {"id": "1", "user_id": 101, "user_name": "Alice", "age": 30})
+        query_engine.insert("users", {"id": "2", "user_id": 102, "user_name": "Bob", "age": 25})
+        
+        # SELECT user_id AS id, user_name AS name FROM users
+        results = query_engine.select(
+            "users",
+            fields=["user_id", "user_name"],
+            aliases={"user_id": "id", "user_name": "name"}
+        )
+        
+        assert len(results) == 2
+        assert "id" in results[0]
+        assert "name" in results[0]
+        assert results[0]["id"] == 101
+        assert results[0]["name"] == "Alice"
+    
+    def test_select_with_aliases_and_conditions(self, query_engine, temp_data_dir):
+        """Test SELECT with aliases and WHERE clause"""
+        query_engine.create_table("users")
+        query_engine.insert("users", {"id": "1", "user_id": 101, "user_name": "Alice", "age": 30})
+        query_engine.insert("users", {"id": "2", "user_id": 102, "user_name": "Bob", "age": 25})
+        query_engine.insert("users", {"id": "3", "user_id": 103, "user_name": "Charlie", "age": 35})
+        
+        # SELECT user_id AS id, user_name AS name FROM users WHERE age >= 30
+        results = query_engine.select(
+            "users",
+            fields=["user_id", "user_name"],
+            aliases={"user_id": "id", "user_name": "name"},
+            conditions={"age": {"operator": "gte", "value": 30}}
+        )
+        
+        assert len(results) == 2
+        assert results[0]["name"] in ["Alice", "Charlie"]
+        assert all("id" in r and "name" in r for r in results)
+    
+    def test_select_all_fields_with_aliases(self, query_engine, temp_data_dir):
+        """Test SELECT * with aliases"""
+        query_engine.create_table("users")
+        query_engine.insert("users", {"id": "1", "user_id": 101, "user_name": "Alice", "age": 30})
+        
+        # SELECT * with some fields aliased
+        results = query_engine.select(
+            "users",
+            aliases={"user_id": "id", "user_name": "name"}
+        )
+        
+        assert len(results) == 1
+        assert "id" in results[0]  # user_id renamed to id
+        assert "name" in results[0]  # user_name renamed to name
+        assert "age" in results[0]  # age not aliased, keeps original name
+    
+    def test_rename_nested_fields(self, query_engine, temp_data_dir):
+        """Test renaming nested fields"""
+        query_engine.create_table("users")
+        query_engine.insert("users", {
+            "id": "1",
+            "profile": {
+                "name": "Alice",
+                "contact": {
+                    "email": "alice@example.com"
+                }
+            }
+        })
+        
+        # Rename nested fields
+        results = query_engine.rename("users", {
+            "profile.name": "username",
+            "profile.contact.email": "email"
+        })
+        
+        assert len(results) == 1
+        assert "username" in results[0]
+        assert "email" in results[0]
+        assert results[0]["username"] == "Alice"
+        assert results[0]["email"] == "alice@example.com"
+    
+    def test_rename_nonexistent_table(self, query_engine, temp_data_dir):
+        """Test rename on non-existent table"""
+        results = query_engine.rename("nonexistent", {"field": "alias"})
+        assert results == []
+    
+    def test_select_empty_table(self, query_engine, temp_data_dir):
+        """Test SELECT on empty table"""
+        query_engine.create_table("users")
+        
+        results = query_engine.select("users", aliases={"user_id": "id"})
+        assert results == []
+    
+    def test_rename_partial_fields(self, query_engine, temp_data_dir):
+        """Test renaming only some fields from a record"""
+        query_engine.create_table("users")
+        query_engine.insert("users", {
+            "id": "1",
+            "user_id": 101,
+            "user_name": "Alice",
+            "age": 30,
+            "email": "alice@example.com"
+        })
+        
+        # Only rename user_id and user_name
+        results = query_engine.rename("users", {
+            "user_id": "id",
+            "user_name": "name"
+        })
+        
+        assert len(results) == 1
+        # Only the renamed fields should be present
+        assert set(results[0].keys()) == {"id", "name"}
+        assert results[0]["id"] == 101
+        assert results[0]["name"] == "Alice"
+
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "--tb=short"])
