@@ -664,6 +664,12 @@ class QueryEngine:
             return field_value < value
         elif operator == "lte":
             return field_value <= value
+        elif operator == "in":
+            # Check if field_value is in the list of values
+            return field_value in value if isinstance(value, list) else field_value == value
+        elif operator == "nin":
+            # Check if field_value is not in the list of values
+            return field_value not in value if isinstance(value, list) else field_value != value
         elif operator == "contains":
             return value in str(field_value)
         else:

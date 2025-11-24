@@ -36,8 +36,8 @@ class QueryOperations:
         Args:
             records: List of records to filter
             field_name: Name of the field to filter by
-            value: Value to compare against
-            operator: Comparison operator ('eq', 'ne', 'gt', 'gte', 'lt', 'lte', 'contains')
+            value: Value to compare against (can be list for 'in'/'nin' operators)
+            operator: Comparison operator ('eq', 'ne', 'gt', 'gte', 'lt', 'lte', 'in', 'nin', 'contains')
             
         Returns:
             List of filtered records
@@ -57,6 +57,12 @@ class QueryOperations:
                 return field_value < value
             elif operator == "lte":
                 return field_value <= value
+            elif operator == "in":
+                # Check if field_value is in the list of values
+                return field_value in value if isinstance(value, list) else field_value == value
+            elif operator == "nin":
+                # Check if field_value is not in the list of values
+                return field_value not in value if isinstance(value, list) else field_value != value
             elif operator == "contains":
                 return value in str(field_value)
             else:
