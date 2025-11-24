@@ -74,8 +74,8 @@ def execute_query(user_id, db_name):
                 direction = sort_spec.get('direction', 'asc')
                 
                 if field:
-                    reverse = (direction.lower() == 'desc')
-                    query = query.sort(field, reverse)
+                    ascending = (direction.lower() != 'desc')
+                    query = query.sort(field, ascending)
         
         # Apply skip/limit
         if 'skip' in data:
@@ -224,6 +224,11 @@ def aggregate_query(user_id, db_name):
     
     table_name = data['table']
     group_field = data['group_by']
+    # Handle both string and list (use first element if list)
+    if isinstance(group_field, list):
+        if len(group_field) == 0:
+            return jsonify({'error': 'group_by cannot be empty'}), 400
+        group_field = group_field[0]
     aggregations = data['aggregations']
     
     try:

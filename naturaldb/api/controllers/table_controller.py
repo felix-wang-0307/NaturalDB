@@ -4,7 +4,7 @@ Handles table CRUD operations
 """
 
 from flask import Blueprint, request, jsonify
-from ...entities import User, Database, Table
+from ...entities import User, Database, Table, Index
 from ...query_engine.query_engine import QueryEngine
 
 table_bp = Blueprint('table', __name__)
@@ -47,7 +47,23 @@ def create_table(user_id, db_name):
         return jsonify({'error': 'table_name is required'}), 400
     
     table_name = data['table_name']
-    indexes = data.get('indexes', {})
+    indexes_data = data.get('indexes', {})
+    
+    # Convert indexes from list to dict format if needed
+    # Accept both list ['field1', 'field2'] and dict {'idx1': {...}, ...}
+    indexes = {}
+    if isinstance(indexes_data, list):
+        # Convert list of field names to Index objects
+        for i, field in enumerate(indexes_data):
+            idx_name = f'idx_{field}'
+            indexes[idx_name] = Index(name=idx_name, fields=[field])
+    elif isinstance(indexes_data, dict):
+        # Convert dict to Index objects
+        for idx_name, idx_spec in indexes_data.items():
+            if isinstance(idx_spec, dict) and 'fields' in idx_spec:
+                indexes[idx_name] = Index(name=idx_name, fields=idx_spec['fields'])
+            elif isinstance(idx_spec, Index):
+                indexes[idx_name] = idx_spec
     
     try:
         user = User(id=user_id, name=user_id)
