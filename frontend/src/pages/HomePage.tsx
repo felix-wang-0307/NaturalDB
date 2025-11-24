@@ -121,7 +121,7 @@ const HomePage = () => {
                 </Link>
               </Col>
               <Col xs={24} sm={12} lg={8}>
-                <Link to="/products">
+                <Link to="/products?minRating=4.5">
                   <Card hoverable className="stat-card">
                     <Statistic
                       title="Highly Rated (≥4.5★)"
@@ -134,7 +134,7 @@ const HomePage = () => {
                 </Link>
               </Col>
               <Col xs={24} sm={12} lg={8}>
-                <Link to="/products">
+                <Link to="/products?minDiscount=60">
                   <Card hoverable className="stat-card">
                     <Statistic
                       title="Big Discounts (≥60%)"

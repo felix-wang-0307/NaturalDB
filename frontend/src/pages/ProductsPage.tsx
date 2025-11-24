@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   Row,
   Col,
@@ -34,6 +34,7 @@ const { Title } = Typography;
 const { Option } = Select;
 
 const ProductsPage = () => {
+  const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [total, setTotal] = useState(0);
@@ -49,6 +50,20 @@ const ProductsPage = () => {
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 24;
+
+  // Initialize filters from URL params
+  useEffect(() => {
+    const urlMinRating = searchParams.get('minRating');
+    const urlMinDiscount = searchParams.get('minDiscount');
+    
+    if (urlMinRating) {
+      setMinRating(parseFloat(urlMinRating));
+    }
+    
+    if (urlMinDiscount) {
+      setMinDiscount(parseFloat(urlMinDiscount));
+    }
+  }, [searchParams]);
 
   const categories = [
     { value: 'USBCables', label: 'USB Cables' },
@@ -172,6 +187,13 @@ const ProductsPage = () => {
         <Title level={2}>Product Catalog</Title>
         <div className="header-stats">
           Showing {products.length} of {total} products
+          {(minRating > 0 || minDiscount > 0) && (
+            <Tag color="blue" style={{ marginLeft: 8 }}>
+              {minRating > 0 && `Rating ≥ ${minRating}`}
+              {minRating > 0 && minDiscount > 0 && ' & '}
+              {minDiscount > 0 && `Discount ≥ ${minDiscount}%`}
+            </Tag>
+          )}
         </div>
       </div>
 

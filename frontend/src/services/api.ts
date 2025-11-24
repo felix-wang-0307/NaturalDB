@@ -200,7 +200,7 @@ export const getPriceDistribution = () => {
  * 计数查询
  */
 export const countProducts = (filters?: QueryRequest['filters']): Promise<CountResponse> => {
-  return api.post(`/api/databases/${USER_ID}/${DB_NAME}/query/count/`, {
+  return api.post(`/api/databases/${USER_ID}/${DB_NAME}/query/count`, {
     table: 'Products',
     filters,
   });
