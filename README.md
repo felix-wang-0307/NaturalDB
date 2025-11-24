@@ -34,11 +34,28 @@ We also provide a **Next.js e-commerce app** that allows users to browse product
 - Query engine supports filtering, projection, group-by, aggregation, join.  
 
 ### Layer 3: Natural Language Query Interface  
-- LLM module converts natural language → query functions.  
-  - Example: `"Find orders with rating 5"` → `orders.filter(rating=5)`.  
-- Built with **Flask REST API**.  
-- Sensitive ops (`update`, `delete`) require confirmation/authorization.  
-- Future plan: package as a reusable **Python library**.  
+- LLM module converts natural language → query functions.
+  - Example: `"Find orders with rating 5"` → `orders.filter(rating=5)`.
+  - Built with **OpenAI Function Calling** for structured outputs.
+  - Automatic tool registration from QueryEngine methods.
+- Sensitive ops (`update`, `delete`) require confirmation/authorization.
+- **Components:**
+  - `function_calling.py` - Automatic tool registration system
+  - `tool_registry.py` - Database operations to OpenAI tools mapper
+  - `nl_query_processor.py` - Natural language to function calls
+  - `executor.py` - Execute function calls on QueryEngine
+  - `naturaldb.py` - Unified high-level API
+- **Usage:**
+  ```python
+  from naturaldb.nlp_interface import NaturalDB
+  from naturaldb.entities import User, Database
+  
+  db = NaturalDB(User("alice", "Alice"), Database("shop"))
+  result = db.query("Show me all products with price > 100")
+  ```
+- Can be packaged as a reusable **Python library**.  
+- See [NLP Interface Documentation](naturaldb/nlp_interface/README.md) for details.
+- 
 
 ### Layer 4: Front-End Demo (E-commerce)  
 - Built with **Next.js**.  
