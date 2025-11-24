@@ -14,7 +14,6 @@ import {
   Empty,
   Space,
   Typography,
-  Rate,
 } from 'antd';
 import {
   SearchOutlined,
@@ -155,7 +154,7 @@ const ProductsPage = () => {
   };
 
   return (
-    <div className="products-page">
+    <div className="products-page page-container">
       <div className="page-header">
         <Title level={2}>Product Catalog</Title>
         <div className="header-stats">
@@ -228,12 +227,25 @@ const ProductsPage = () => {
             </div>
 
             <div className="filter-section">
-              <div className="filter-title">Minimum Rating</div>
-              <Rate
+              <div className="filter-title">
+                Minimum Rating: {minRating.toFixed(1)}★
+              </div>
+              <Slider
+                min={0}
+                max={5}
+                step={0.1}
                 value={minRating}
                 onChange={(value) => {
                   setMinRating(value);
-                  setCurrentPage(1);
+                }}
+                onChangeComplete={() => setCurrentPage(1)}
+                marks={{
+                  0: '0',
+                  2.5: '2.5',
+                  5: '5',
+                }}
+                tooltip={{
+                  formatter: (value) => `${value?.toFixed(1)}★`,
                 }}
               />
             </div>

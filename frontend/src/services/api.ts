@@ -41,7 +41,7 @@ export const healthCheck = () => api.get('/health');
  * 执行通用查询
  */
 export const query = <T = Product>(params: QueryRequest): Promise<QueryResponse<T>> => {
-  return api.post(`/api/databases/${USER_ID}/${DB_NAME}/query`, params);
+  return api.post(`/api/databases/${USER_ID}/${DB_NAME}/query/`, params);
 };
 
 /**
@@ -170,7 +170,7 @@ export const getHighDiscountProducts = (
  * 按类别聚合统计
  */
 export const aggregateByCategory = (): Promise<AggregationResponse> => {
-  return api.post(`/api/databases/${USER_ID}/${DB_NAME}/query/aggregate`, {
+  return api.post(`/api/databases/${USER_ID}/${DB_NAME}/query/aggregate/`, {
     table: 'Products',
     group_by: 'category',
     aggregations: {
@@ -185,7 +185,7 @@ export const aggregateByCategory = (): Promise<AggregationResponse> => {
  * 价格分布统计
  */
 export const getPriceDistribution = () => {
-  return api.post(`/api/databases/${USER_ID}/${DB_NAME}/query/aggregate`, {
+  return api.post(`/api/databases/${USER_ID}/${DB_NAME}/query/aggregate/`, {
     table: 'Products',
     group_by: 'category',
     aggregations: {
@@ -200,7 +200,7 @@ export const getPriceDistribution = () => {
  * 计数查询
  */
 export const countProducts = (filters?: QueryRequest['filters']): Promise<CountResponse> => {
-  return api.post(`/api/databases/${USER_ID}/${DB_NAME}/query/count`, {
+  return api.post(`/api/databases/${USER_ID}/${DB_NAME}/query/count/`, {
     table: 'Products',
     filters,
   });
@@ -210,7 +210,7 @@ export const countProducts = (filters?: QueryRequest['filters']): Promise<CountR
  * 自定义聚合查询
  */
 export const customAggregate = (params: AggregationRequest): Promise<AggregationResponse> => {
-  return api.post(`/api/databases/${USER_ID}/${DB_NAME}/query/aggregate`, params);
+  return api.post(`/api/databases/${USER_ID}/${DB_NAME}/query/aggregate/`, params);
 };
 
 export default api;

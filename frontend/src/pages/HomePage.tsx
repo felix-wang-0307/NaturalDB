@@ -74,7 +74,7 @@ const HomePage = () => {
   };
 
   return (
-    <div className="home-page">
+    <div className="home-page page-container">
       <div className="hero-section">
         <div className="hero-content">
           <Title level={1}>Welcome to NaturalDB Demo</Title>

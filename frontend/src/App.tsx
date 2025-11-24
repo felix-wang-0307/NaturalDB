@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Layout, Menu, Typography } from 'antd';
 import {
   HomeOutlined,
@@ -17,37 +17,47 @@ import './App.less';
 const { Header, Content, Footer } = Layout;
 const { Title } = Typography;
 
-function App() {
+function AppContent() {
+  const location = useLocation();
+  
+  const getSelectedKey = () => {
+    const path = location.pathname;
+    if (path === '/') return ['home'];
+    if (path.startsWith('/products')) return ['products'];
+    if (path === '/dashboard') return ['dashboard'];
+    if (path === '/query-builder') return ['query'];
+    return ['home'];
+  };
+
   return (
-    <Router>
-      <Layout className="app-layout">
-        <Header className="app-header">
-          <div className="logo">
-            <DatabaseOutlined className="logo-icon" />
-            <Title level={3} className="logo-text">
-              NaturalDB Demo
-            </Title>
-          </div>
-          <Menu
-            theme="dark"
-            mode="horizontal"
-            defaultSelectedKeys={['home']}
-            className="main-menu"
-          >
-            <Menu.Item key="home" icon={<HomeOutlined />}>
-              <Link to="/">Home</Link>
-            </Menu.Item>
-            <Menu.Item key="products" icon={<ShoppingOutlined />}>
-              <Link to="/products">Products</Link>
-            </Menu.Item>
-            <Menu.Item key="dashboard" icon={<DashboardOutlined />}>
-              <Link to="/dashboard">Dashboard</Link>
-            </Menu.Item>
-            <Menu.Item key="query" icon={<SearchOutlined />}>
-              <Link to="/query-builder">Query Builder</Link>
-            </Menu.Item>
-          </Menu>
-        </Header>
+    <Layout className="app-layout">
+      <Header className="app-header">
+        <div className="logo">
+          <DatabaseOutlined className="logo-icon" />
+          <Title level={3} className="logo-text">
+            NaturalDB Demo
+          </Title>
+        </div>
+        <Menu
+          theme="dark"
+          mode="horizontal"
+          selectedKeys={getSelectedKey()}
+          className="main-menu"
+        >
+          <Menu.Item key="home" icon={<HomeOutlined />}>
+            <Link to="/">Home</Link>
+          </Menu.Item>
+          <Menu.Item key="products" icon={<ShoppingOutlined />}>
+            <Link to="/products">Products</Link>
+          </Menu.Item>
+          <Menu.Item key="dashboard" icon={<DashboardOutlined />}>
+            <Link to="/dashboard">Dashboard</Link>
+          </Menu.Item>
+          <Menu.Item key="query" icon={<SearchOutlined />}>
+            <Link to="/query-builder">Query Builder</Link>
+          </Menu.Item>
+        </Menu>
+      </Header>
 
         <Content className="app-content">
           <Routes>
@@ -59,17 +69,24 @@ function App() {
           </Routes>
         </Content>
 
-        <Footer className="app-footer">
-          <div className="footer-content">
-            <div>
-              <strong>NaturalDB</strong> - A Natural-Language-Driven NoSQL Database System
-            </div>
-            <div>
-              USC DSCI-551 Project © 2024 | Built with React + TypeScript + Ant Design
-            </div>
+      <Footer className="app-footer">
+        <div className="footer-content">
+          <div>
+            <strong>NaturalDB</strong> - A Natural-Language-Driven NoSQL Database System
           </div>
-        </Footer>
-      </Layout>
+          <div>
+            USC DSCI-551 Project © 2024 | Built with React + TypeScript + Ant Design
+          </div>
+        </div>
+      </Footer>
+    </Layout>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <AppContent />
     </Router>
   );
 }
