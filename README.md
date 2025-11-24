@@ -88,11 +88,10 @@ git clone https://github.com/your-username/naturaldb.git
 cd naturaldb
 
 # Backend setup
-cd backend
 pip install -r requirements.txt
-python app.py
+python naturaldb/naturaldb.py
 
 # Frontend setup
-cd ../frontend
+cd frontend
 npm install
 npm run dev
