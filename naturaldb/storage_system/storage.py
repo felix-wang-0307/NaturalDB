@@ -1,6 +1,7 @@
 from ..entities import User, Database, Table, Record
 from ..utils import sanitize_name
 from .file_system import FileSystem
+from ..env_config import config
 import os
 from typing import Optional
 from ..json_parser import JSONParser
@@ -20,7 +21,7 @@ class Storage:
         Respects NATURALDB_DATA_PATH environment variable for testing.
         """
         # Use environment variable if set, otherwise use local data directory
-        base_dir = os.environ.get('NATURALDB_DATA_PATH', os.path.join(os.getcwd(), "data"))
+        base_dir = config.get_data_path()
         path = f"{base_dir}/{sanitize_name(user.id)}"
         if database:
             path += f"/{sanitize_name(database.name)}"

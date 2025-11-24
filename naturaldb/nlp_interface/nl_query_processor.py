@@ -6,6 +6,7 @@ Handles communication with OpenAI API for function calling.
 from typing import List, Dict, Any, Optional
 import json
 import os
+from ..env_config import config
 
 
 class NLQueryProcessor:
@@ -22,10 +23,10 @@ class NLQueryProcessor:
             api_key: OpenAI API key. If None, reads from OPENAI_API_KEY environment variable.
             model: OpenAI model to use for function calling
         """
-        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
+        self.api_key = api_key or config.get_openai_api_key()
         if not self.api_key:
             raise ValueError(
-                "OpenAI API key is required. Set OPENAI_API_KEY environment variable or pass api_key parameter."
+                "OpenAI API key is required. Set OPENAI_API_KEY in naturaldb/.env file or pass api_key parameter."
             )
         
         self.model = model

@@ -6,6 +6,7 @@ Handles user management operations
 from flask import Blueprint, request, jsonify
 from ...storage_system.storage import Storage
 from ...entities import User
+from ...env_config import config
 import os
 
 user_bp = Blueprint('user', __name__)
@@ -13,11 +14,7 @@ user_bp = Blueprint('user', __name__)
 
 def get_storage():
     """Get base path for storage"""
-    base_path = os.getenv('NATURALDB_BASE_PATH', './data')
-    # Also check NATURALDB_DATA_PATH for consistency
-    if not os.path.exists(base_path):
-        base_path = os.getenv('NATURALDB_DATA_PATH', './data')
-    return base_path
+    return config.get_data_path()
 
 
 @user_bp.route('/', methods=['GET'])
