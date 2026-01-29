@@ -1,11 +1,6 @@
 # NaturalDB 🚀  
 *A Natural-Language-Driven NoSQL Database System with E-commerce Demo*  
 
-[![Python](https://img.shields.io/badge/Python-3.11-blue.svg)](https://www.python.org/)
-[![React](https://img.shields.io/badge/React-19.1-61dafb.svg)](https://reactjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178c6.svg)](https://www.typescriptlang.org/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-
 ![architecture](architecture.png)
 
 ## Overview  

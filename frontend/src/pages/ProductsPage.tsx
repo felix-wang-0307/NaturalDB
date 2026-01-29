@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   Row,
@@ -27,6 +27,7 @@ import {
   formatPrice,
   formatNumber,
   getRatingColor,
+  debounce,
 } from '../utils/helpers';
 import './ProductsPage.less';
 
@@ -39,17 +40,42 @@ const ProductsPage = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [total, setTotal] = useState(0);
   
-  // Filter states
+  // Filter states (used for API calls)
   const [searchText, setSearchText] = useState('');
+  const [debouncedSearchText, setDebouncedSearchText] = useState('');
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 100000]);
+  const [debouncedPriceRange, setDebouncedPriceRange] = useState<[number, number]>([0, 100000]);
   const [minRating, setMinRating] = useState(0);
+  const [debouncedMinRating, setDebouncedMinRating] = useState(0);
   const [minDiscount, setMinDiscount] = useState(0);
+  const [debouncedMinDiscount, setDebouncedMinDiscount] = useState(0);
   const [sortBy, setSortBy] = useState<string>('rating_desc');
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 24;
+
+  // Create debounced setters
+  const debouncedSetSearchText = useMemo(
+    () => debounce((value: string) => setDebouncedSearchText(value), 500),
+    []
+  );
+
+  const debouncedSetPriceRange = useMemo(
+    () => debounce((value: [number, number]) => setDebouncedPriceRange(value), 300),
+    []
+  );
+
+  const debouncedSetMinRating = useMemo(
+    () => debounce((value: number) => setDebouncedMinRating(value), 300),
+    []
+  );
+
+  const debouncedSetMinDiscount = useMemo(
+    () => debounce((value: number) => setDebouncedMinDiscount(value), 300),
+    []
+  );
 
   // Initialize filters from URL params
   useEffect(() => {
@@ -93,11 +119,11 @@ const ProductsPage = () => {
       // Build filters
       const filters: QueryFilter[] = [];
 
-      if (searchText) {
+      if (debouncedSearchText) {
         filters.push({
           field: 'product_name',
           operator: 'contains',
-          value: searchText,
+          value: debouncedSearchText,
         });
       }
 
@@ -110,35 +136,35 @@ const ProductsPage = () => {
       }
 
       // 只在用户设置了非默认值时才添加price filters
-      if (priceRange[0] > 0) {
+      if (debouncedPriceRange[0] > 0) {
         filters.push({
           field: 'discounted_price',
           operator: 'gte',
-          value: priceRange[0],
+          value: debouncedPriceRange[0],
         });
       }
 
-      if (priceRange[1] < 100000) {
+      if (debouncedPriceRange[1] < 100000) {
         filters.push({
           field: 'discounted_price',
           operator: 'lte',
-          value: priceRange[1],
+          value: debouncedPriceRange[1],
         });
       }
 
-      if (minRating > 0) {
+      if (debouncedMinRating > 0) {
         filters.push({
           field: 'rating',
           operator: 'gte',
-          value: minRating,
+          value: debouncedMinRating,
         });
       }
 
-      if (minDiscount > 0) {
+      if (debouncedMinDiscount > 0) {
         filters.push({
           field: 'discount_percentage',
           operator: 'gte',
-          value: minDiscount,
+          value: debouncedMinDiscount,
         });
       }
 
@@ -160,7 +186,7 @@ const ProductsPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [searchText, selectedCategories, priceRange, minRating, minDiscount, sortBy, currentPage]);
+  }, [debouncedSearchText, selectedCategories, debouncedPriceRange, debouncedMinRating, debouncedMinDiscount, sortBy, currentPage]);
 
   useEffect(() => {
     loadProducts();
@@ -168,15 +194,20 @@ const ProductsPage = () => {
 
   const handleSearch = (value: string) => {
     setSearchText(value);
+    debouncedSetSearchText(value);
     setCurrentPage(1);
   };
 
   const handleReset = () => {
     setSearchText('');
+    setDebouncedSearchText('');
     setSelectedCategories([]);
     setPriceRange([0, 100000]);
+    setDebouncedPriceRange([0, 100000]);
     setMinRating(0);
+    setDebouncedMinRating(0);
     setMinDiscount(0);
+    setDebouncedMinDiscount(0);
     setSortBy('rating_desc');
     setCurrentPage(1);
   };
@@ -219,6 +250,7 @@ const ProductsPage = () => {
               <Input
                 placeholder="Search products..."
                 prefix={<SearchOutlined />}
+                value={searchText}
                 onChange={(e) => handleSearch(e.target.value)}
                 allowClear
               />
@@ -257,9 +289,11 @@ const ProductsPage = () => {
                 step={100}
                 value={priceRange}
                 onChange={(value) => {
-                  setPriceRange(value as [number, number]);
+                  const newValue = value as [number, number];
+                  setPriceRange(newValue);
+                  debouncedSetPriceRange(newValue);
+                  setCurrentPage(1);
                 }}
-                onChangeComplete={() => setCurrentPage(1)}
               />
             </div>
 
@@ -274,8 +308,9 @@ const ProductsPage = () => {
                 value={minRating}
                 onChange={(value) => {
                   setMinRating(value);
+                  debouncedSetMinRating(value);
+                  setCurrentPage(1);
                 }}
-                onChangeComplete={() => setCurrentPage(1)}
                 marks={{
                   0: '0',
                   2.5: '2.5',
@@ -295,8 +330,9 @@ const ProductsPage = () => {
                 value={minDiscount}
                 onChange={(value) => {
                   setMinDiscount(value);
+                  debouncedSetMinDiscount(value);
+                  setCurrentPage(1);
                 }}
-                onChangeComplete={() => setCurrentPage(1)}
               />
             </div>
           </div>
